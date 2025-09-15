@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Placement Prep Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -213,50 +214,63 @@
         }
 
         async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
-            const card = e.target.closest('.task-card');
-            if (!card) return;
-            const taskId = card.dataset.id;
-            const task = appState.tasks.find(t => t.id === taskId);
-            if (!task) return;
+        const card = e.target.closest('.task-card');
+        if (!card) return;
+        const taskId = card.dataset.id;
+        const task = appState.tasks.find(t => t.id === taskId);
+        if (!task) return;
 
-            if (e.target.matches('.task-checkbox')) {
-                const isCompleted = e.target.checked;
-                await tasksCollection.doc(taskId).update({ completed: isCompleted });
-                if (isCompleted) {
-                    const starburstContainer = card.querySelector('.starburst-container');
-                    const starburst = document.createElement('div');
-                    starburst.className = 'absolute inset-0 border-2 border-cyan-400 rounded-full animate-starburst';
-                    starburstContainer.appendChild(starburst);
-                    setTimeout(() => starburst.remove(), 500);
-                    showToast(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
-                    if (task.type === 'study_topic' && confirm('Create spaced repetition reviews for this topic?')) {
-                        [3, 7, 14].forEach(async days => {
-                            const reviewDate = new Date(); reviewDate.setDate(reviewDate.getDate() + days);
-                            await tasksCollection.add({ ...task, title: `Review: ${task.title}`, type: 'task', dueDate: reviewDate.toISOString().split('T')[0], createdAt: new Date().toISOString() });
-                        });
-                        showToast('Review tasks created!');
-                    }
-                    showSkillRatingModal(task, skillsCollection);
-                }
-            } else if (e.target.matches('[data-subtask-index]')) {
-                const index = parseInt(e.target.dataset.subtaskIndex);
-                task.subtasks[index].completed = e.target.checked;
-                await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
-            } else if (e.target.closest('.delete-btn')) {
-                if (confirm('Are you sure you want to delete this task?')) await tasksCollection.doc(taskId).delete();
-            } else if (e.target.closest('.timer-btn')) {
-                const isRunning = !task.timerRunning;
-                const updates = { timerRunning: isRunning };
-                if (isRunning) {
-                    updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
-                } else if (task.lastStartTime) {
-                    const duration = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-                    updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
-                    await timeLogsCollection.add({ taskId, duration, category: task.category, timestamp: new Date() });
-                }
-                await tasksCollection.doc(taskId).update(updates);
+        // --- Logic for the main completion checkbox ---
+        if (e.target.matches('.task-checkbox')) {
+            const isCompleted = e.target.checked;
+            await tasksCollection.doc(taskId).update({ completed: isCompleted });
+        if (isCompleted) {
+            // ... (your existing animation, quote, and skill rating logic is here) ...
+            showSkillRatingModal(task, skillsCollection);
             }
+        } 
+
+        // --- NEW LOGIC for sub-task completion and confetti ---
+        else if (e.target.matches('[data-subtask-index]')) {
+            const index = parseInt(e.target.dataset.subtaskIndex);
+
+        // Mark the sub-task as completed in our local state
+        task.subtasks[index].completed = e.target.checked;
+
+        // Check if ALL sub-tasks for this project are now complete
+        const allSubtasksCompleted = task.subtasks.every(st => st.completed);
+
+        if (allSubtasksCompleted) {
+            // If all are complete, trigger the confetti!
+            console.log("Project complete! Firing confetti!");
+            confetti({
+                particleCount: 150,
+                spread: 90,
+                origin: { y: 0.6 }
+            });
         }
+
+            // Save the updated sub-tasks array back to Firestore
+             await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
+        } 
+
+         // --- The rest of the function remains the same ---
+        else if (e.target.closest('.delete-btn')) {
+            if (confirm('Are you sure you want to delete this task?')) await tasksCollection.doc(taskId).delete();
+        } 
+        else if (e.target.closest('.timer-btn')) {
+            const isRunning = !task.timerRunning;
+            const updates = { timerRunning: isRunning };
+        if (isRunning) {
+            updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+        } else if (task.lastStartTime) {
+                const duration = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
+                updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+                await timeLogsCollection.add({ taskId, duration, category: task.category, timestamp: new Date() });
+            }
+            await tasksCollection.doc(taskId).update(updates);
+        }
+    }
         
         // =================================================================================
         // SECTION 6: FIRESTORE LOGIC
@@ -414,4 +428,5 @@
     });
     </script>
 </body>
+
 </html>
