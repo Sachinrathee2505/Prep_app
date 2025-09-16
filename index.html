@@ -37,48 +37,38 @@
   </script>
 
   <style>
-    .task-card {
-      /* This enables 3D transformations for child elements */
-      transform-style: preserve-3d;
-      /* Add perspective to give a sense of depth */
-      transform: perspective(1000px);
-      /* Smoothly transition back to normal when the mouse leaves */
-      transition: transform 0.4s ease-out, box-shadow 0.4s ease-out;
-      position: relative; /* Needed for the glow pseudo-element */
-    }
+      .task-card {
+        /* The outer card only needs perspective to create the 3D space */
+        transform: perspective(1000px);
+      }
+      .card-content {
+        /* The inner content gets the 3D transforms and transitions */
+        transform-style: preserve-3d;
+        transition: transform 0.4s ease-out, box-shadow 0.4s ease-out;
+        position: relative; /* Needed for the glow pseudo-element */
+      }
+      .task-card:hover .card-content {
+        /* On hover, lift and shadow the inner content */
+        transition: transform 0.1s ease-in, box-shadow 0.1s ease-in;
+        transform: translateZ(20px);
+        box-shadow: 0 25px 40px -15px rgba(0, 0, 0, 0.4);
+      }
+      .card-content::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.15), transparent 25%);
+        opacity: 0;
+        transition: opacity 0.4s ease-out;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      .task-card:hover .card-content::before {
+        opacity: 1; /* Show the glow on hover */
+      }
 
-    .task-card:hover {
-      /* Lift the card up slightly on hover */
-      transition: transform 0.1s ease-in, box-shadow 0.1s ease-in;
-      transform: perspective(1000px) translateZ(20px);
-      box-shadow: 0 25px 40px -15px rgba(0, 0, 0, 0.4);
-    }
-
-    /* This is the radial gradient that creates the glow/sheen effect */
-    .task-card::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(
-        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-        rgba(255, 255, 255, 0.15),
-        rgba(255, 255, 255, 0) 25%
-      );
-      opacity: 0;
-      transition: opacity 0.4s ease-out;
-      border-radius: inherit; /* Match the card's rounded corners */
-      pointer-events: none; /* Make sure it doesn't interfere with mouse events */
-    }
-
-    .task-card:hover::before {
-      opacity: 1; /* Show the glow on hover */
-    }
-
-    .completed { text-decoration: line-through; opacity: 0.6; }
-    .star-rating svg { cursor: pointer; }
+      .completed { text-decoration: line-through; opacity: 0.6; }
+      .star-rating svg { cursor: pointer; }
   </style>
 </head>
 
@@ -226,23 +216,9 @@
       }
 
       function attachDataListeners(tasksCollection, skillsCollection) {
+        
         tasksCollection.onSnapshot(snapshot => {
           appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          Object.values(appState.timers).forEach(clearInterval);
-          appState.timers = {};
-          appState.tasks.filter(t => t.timerRunning && t.lastStartTime).forEach(task => {
-            const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
-            if (card) {
-              const timerDisplay = card.querySelector('.timer-display');
-              appState.timers[task.id] = setInterval(() => {
-                if (!task.lastStartTime) return;
-                const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-                const totalTime = (task.totalTimeLogged || 0) + elapsed;
-                const h = Math.floor(totalTime / 3600), m = Math.floor((totalTime % 3600) / 60), s = totalTime % 60;
-                if (timerDisplay) timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-              }, 1000);
-            }
-          });
           render();
         });
 
@@ -425,21 +401,18 @@ function createShatterEffect(cardElement) {
 function add3DTiltEffect() {
     const mainGrid = document.querySelector('#main-content');
     if (!mainGrid) return;
-
-    // This variable will keep track of the card the mouse was last on
-    let lastCard = null;
+    let lastCardContent = null;
 
     mainGrid.addEventListener('mousemove', e => {
-        const currentCard = e.target.closest('.task-card');
+        const card = e.target.closest('.task-card');
+        const currentContent = card ? card.querySelector('.card-content') : null;
 
-        // If the last card we were on is different from the current one, reset it
-        if (lastCard && lastCard !== currentCard) {
-            lastCard.style.transform = `perspective(1000px) translateZ(0) rotateX(0deg) rotateY(0deg)`;
+        if (lastCardContent && lastCardContent !== currentContent) {
+            lastCardContent.style.transform = `translateZ(0) rotateX(0deg) rotateY(0deg)`;
         }
 
-        // If we are currently over a card, apply the tilt effect
-        if (currentCard) {
-            const rect = currentCard.getBoundingClientRect();
+        if (currentContent) {
+            const rect = currentContent.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const centerX = rect.width / 2;
@@ -447,24 +420,20 @@ function add3DTiltEffect() {
             const rotateX = (y - centerY) / 10;
             const rotateY = (centerX - x) / 10;
 
-            // Apply the rotation and glow position using CSS variables
-            currentCard.style.setProperty('--mouse-x', `${x}px`);
-            currentCard.style.setProperty('--mouse-y', `${y}px`);
-            currentCard.style.transform = `perspective(1000px) translateZ(20px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            currentContent.style.setProperty('--mouse-x', `${x}px`);
+            currentContent.style.setProperty('--mouse-y', `${y}px`);
+            currentContent.style.transform = `translateZ(20px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
 
-            // Update the last card to be this one
-            lastCard = currentCard;
+            lastCardContent = currentContent;
         } else {
-            // If we are not over any card, there is no last card
-            lastCard = null;
+            lastCardContent = null;
         }
     });
 
-    // This is a final cleanup for when the mouse leaves the entire grid area
     mainGrid.addEventListener('mouseleave', () => {
-        if (lastCard) {
-            lastCard.style.transform = `perspective(1000px) translateZ(0) rotateX(0deg) rotateY(0deg)`;
-            lastCard = null;
+        if (lastCardContent) {
+            lastCardContent.style.transform = `translateZ(0) rotateX(0deg) rotateY(0deg)`;
+            lastCardContent = null;
         }
     });
 }
@@ -487,22 +456,93 @@ function add3DTiltEffect() {
         const alertBanner = document.getElementById('alert-banner');
         alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
         if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
+        function renderDashboard() {
+    mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div id="col-fullstack" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2><div class="space-y-4"></div></div><div id="col-mitx" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2><div class="space-y-4"></div></div><div id="col-nvidia" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2><div class="space-y-4"></div></div></div>`;
+    
+    const { startOfWeek } = getWeekRange(new Date());
+    const overdueTasks = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek);
+    const thisWeekTasks = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
+    const tasksToRender = [...overdueTasks, ...thisWeekTasks];
+
+    tasksToRender.forEach(task => {
+        const column = mainContent.querySelector(`#col-${task.category.toLowerCase().replace(/ & /g, '')} .space-y-4`);
+        if (column) column.appendChild(createTaskCard(task));
+    });
+
+    const dueTodayOrOverdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0));
+    const alertBanner = document.getElementById('alert-banner');
+    alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
+    if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
+
+    // Clear any old timers before setting new ones
+    Object.values(appState.timers).forEach(clearInterval);
+    appState.timers = {};
+
+    // Find all tasks that should be running and set up their intervals
+    appState.tasks.filter(t => t.timerRunning).forEach(task => {
+        const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
+        if (card) {
+            const timerDisplay = card.querySelector('.timer-display');
+            appState.timers[task.id] = setInterval(() => {
+                // This check prevents errors if the timestamp hasn't synced from the server yet
+                if (!task.lastStartTime || !task.lastStartTime.toDate) return; 
+
+                const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
+                const totalTime = (task.totalTimeLogged || 0) + elapsed;
+                const h = Math.floor(totalTime / 3600);
+                const m = Math.floor((totalTime % 3600) / 60);
+                const s = totalTime % 60;
+
+                if (timerDisplay) {
+                    timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+    });
+}
       }
 
       function createTaskCard(task) {
-        const card = document.createElement('div');
-        card.className = `task-card bg-gray-700 p-4 rounded-lg shadow-md ${task.completed ? 'completed' : ''} border-l-4 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]}`;
-        card.dataset.id = task.id;
-        const totalTime = task.totalTimeLogged || 0;
-        const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
-        let projectHTML = '';
-        if (task.type === 'project' && task.subtasks) {
-          const completedSubtasks = task.subtasks.filter(st => st.completed).length;
-          const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
-          projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
-        }
-        card.innerHTML = `<div class="flex justify-between items-start"><div class="flex-grow"><h3 class="font-bold">${task.title}</h3><p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}<div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div></div><div class="flex-shrink-0 relative"><input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}><div class="starburst-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 pointer-events-none"></div></div></div>${projectHTML}<div class="mt-4 flex justify-between items-center text-sm"><div class="flex items-center space-x-2"><button class="timer-btn p-1 rounded-md ${task.timerRunning ? 'bg-red-500' : 'bg-green-500'} hover:opacity-80">${task.timerRunning ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>'}</button><span class="timer-display font-mono">${timeDisplay}</span></div><button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`;
-        return card;
+          const card = document.createElement('div');
+          // We removed a few classes from here...
+          card.className = `task-card bg-gray-700 p-4 rounded-lg shadow-md`; 
+          card.dataset.id = task.id;
+
+          const totalTime = task.totalTimeLogged || 0;
+          const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
+          let projectHTML = '';
+
+          if (task.type === 'project' && task.subtasks) {
+            const completedSubtasks = task.subtasks.filter(st => st.completed).length;
+            const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
+            projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
+          }
+
+          // We've added a new div with the class "card-content" that wraps everything.
+          card.innerHTML = `
+              <div class="card-content ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
+                  <div class="flex justify-between items-start">
+                      <div class="flex-grow">
+                          <h3 class="font-bold">${task.title}</h3>
+                          <p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>
+                          ${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}
+                          <div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div>
+                      </div>
+                      <div class="flex-shrink-0 relative">
+                          <input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}>
+                          <div class="starburst-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 pointer-events-none"></div>
+                      </div>
+                  </div>
+                  ${projectHTML}
+                  <div class="mt-4 flex justify-between items-center text-sm">
+                      <div class="flex items-center space-x-2">
+                          <button class="timer-btn p-1 rounded-md ${task.timerRunning ? 'bg-red-500' : 'bg-green-500'} hover:opacity-80">${task.timerRunning ? '<svg xmlns="http://www.w.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>'}</button>
+                          <span class="timer-display font-mono">${timeDisplay}</span>
+                      </div>
+                      <button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                  </div>
+              </div>`;
+          return card;
       }
 
       function renderSkillsDashboard() {
