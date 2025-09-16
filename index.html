@@ -7,6 +7,7 @@
   <title>Placement Prep Command Center</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -321,8 +322,14 @@
           await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
         }
 
+
         else if (e.target.closest('.delete-btn')) {
-          if (confirm('Are you sure you want to delete this task?')) await tasksCollection.doc(taskId).delete();
+            if (confirm('Are you sure you want to delete this task?')) {
+            // Call the shatter effect on the card element FIRST
+            createShatterEffect(card);
+            // Then, delete the data from Firestore
+            await tasksCollection.doc(taskId).delete();
+            }
         }
         else if (e.target.closest('.timer-btn')) {
           const isRunning = !task.timerRunning;
@@ -366,6 +373,54 @@
         navSkills.classList.toggle('text-white', view === 'skills');
         render();
       }
+
+function createShatterEffect(cardElement) {
+    const rect = cardElement.getBoundingClientRect();
+
+    // Create a container for the particles at the exact same position as the card
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = `${rect.left}px`;
+    container.style.top = `${rect.top}px`;
+    container.style.width = `${rect.width}px`;
+    container.style.height = `${rect.height}px`;
+    container.style.zIndex = '100'; // Make sure it's on top
+    document.body.appendChild(container);
+
+    // Hide the original card so we only see the animation
+    cardElement.style.opacity = '0';
+
+    // Create a grid of particles
+    const gridSize = 10;
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            const particle = document.createElement('div');
+            particle.style.position = 'absolute';
+            particle.style.left = `${(i / gridSize) * 100}%`;
+            particle.style.top = `${(j / gridSize) * 100}%`;
+            particle.style.width = `${100 / gridSize}%`;
+            particle.style.height = `${100 / gridSize}%`;
+            particle.style.background = 'rgb(75 85 99)'; // Corresponds to bg-gray-700
+            container.appendChild(particle);
+        }
+    }
+
+    // Use anime.js to animate the particles
+    anime({
+        targets: container.children,
+        translateX: () => anime.random(-100, 100),
+        translateY: () => anime.random(-150, 50),
+        scale: () => anime.random(0.2, 0.8),
+        opacity: [1, 0],
+        delay: anime.stagger(20, {from: 'center'}),
+        duration: 800,
+        easing: 'easeOutExpo',
+        // When the animation is complete, remove the particle container
+        complete: () => {
+            container.remove();
+        }
+    });
+}
 
 function add3DTiltEffect() {
     const mainGrid = document.querySelector('#main-content');
