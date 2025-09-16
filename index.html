@@ -1,219 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <link rel="manifest" href="manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Placement Prep Command Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    keyframes: {
-                        'starburst': { '0%': { transform: 'scale(0)', opacity: '1' }, '100%': { transform: 'scale(1.5)', opacity: '0' } },
-                        'toast-in': { '0%': { transform: 'translateY(100%)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
-                        'toast-out': { '0%': { transform: 'translateY(0)', opacity: '1' }, '100%': { transform: 'translateY(100%)', opacity: '0' } }
-                    },
-                    animation: {
-                        'starburst': 'starburst 0.5s ease-out forwards',
-                        'toast-in': 'toast-in 0.5s ease-out forwards',
-                        'toast-out': 'toast-out 0.5s ease-in forwards',
-                    }
-                }
+  <meta charset="UTF-8">
+  <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Prep Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          keyframes: {
+            'starburst': {
+              '0%': { transform: 'scale(0)', opacity: '1' },
+              '100%': { transform: 'scale(1.5)', opacity: '0' }
+            },
+            'toast-in': {
+              '0%': { transform: 'translateY(100%)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            },
+            'toast-out': {
+              '0%': { transform: 'translateY(0)', opacity: '1' },
+              '100%': { transform: 'translateY(100%)', opacity: '0' }
             }
+          },
+          animation: {
+            'starburst': 'starburst 0.5s ease-out forwards',
+            'toast-in': 'toast-in 0.5s ease-out forwards',
+            'toast-out': 'toast-out 0.5s ease-in forwards',
+          }
         }
-    </script>
-    <style>
-        .task-card { transition: all 0.2s ease-in-out; }
-        .task-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .completed { text-decoration: line-through; opacity: 0.6; }
-        .star-rating svg { cursor: pointer; }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    .task-card {
+      /* This enables 3D transformations for child elements */
+      transform-style: preserve-3d;
+      /* Add perspective to give a sense of depth */
+      transform: perspective(1000px);
+      /* Smoothly transition back to normal when the mouse leaves */
+      transition: transform 0.4s ease-out, box-shadow 0.4s ease-out;
+      position: relative; /* Needed for the glow pseudo-element */
+    }
+
+    .task-card:hover {
+      /* Lift the card up slightly on hover */
+      transition: transform 0.1s ease-in, box-shadow 0.1s ease-in;
+      transform: perspective(1000px) translateZ(20px);
+      box-shadow: 0 25px 40px -15px rgba(0, 0, 0, 0.4);
+    }
+
+    /* This is the radial gradient that creates the glow/sheen effect */
+    .task-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(
+        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(255, 255, 255, 0.15),
+        rgba(255, 255, 255, 0) 25%
+      );
+      opacity: 0;
+      transition: opacity 0.4s ease-out;
+      border-radius: inherit; /* Match the card's rounded corners */
+      pointer-events: none; /* Make sure it doesn't interfere with mouse events */
+    }
+
+    .task-card:hover::before {
+      opacity: 1; /* Show the glow on hover */
+    }
+
+    .completed { text-decoration: line-through; opacity: 0.6; }
+    .star-rating svg { cursor: pointer; }
+  </style>
 </head>
+
 <body class="bg-gray-900 text-gray-100 font-sans antialiased">
 
-    <div id="app" class="min-h-screen flex flex-col">
-        <header class="bg-gray-800 shadow-lg p-4 flex justify-between items-center sticky top-0 z-20">
-            <h1 class="text-xl md:text-2xl font-bold text-cyan-400">🚀 Placement Prep Command Center</h1>
-            <nav class="flex items-center space-x-4">
-                <div id="nav-buttons" class="hidden items-center space-x-4">
-                    <button id="nav-dashboard" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Dashboard</button>
-                    <button id="nav-skills" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Skills</button>
-                    <button id="report-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Weekly Report</button>
-                </div>
-                <div id="user-auth-container">
-                    <button id="sign-in-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-white text-gray-800 hover:bg-gray-200 flex items-center">
-                        <svg class="w-4 h-4 mr-2" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c6.49 0 11.92-2.13 15.89-5.81l-7.11-5.52c-2.17 1.46-4.94 2.32-8.78 2.32-6.76 0-12.47-4.55-14.51-10.61H2.26v5.7C6.22 40.05 14.49 46 24 46z"/><path fill="#FBBC05" d="M9.49 27.98c-.45-1.35-.7-2.78-.7-4.28s.25-2.93.7-4.28V13.7H2.26C.81 16.63 0 20.17 0 24s.81 7.37 2.26 10.3l7.23-5.32z"/><path fill="#EA4335" d="M24 9.4c3.51 0 6.58 1.22 9.02 3.54l6.32-6.32C35.91 2.65 30.49 0 24 0 14.49 0 6.22 5.95 2.26 13.7l7.23 5.7c2.04-6.06 7.75-10 14.51-10z"/></svg>
-                        Sign in with Google
-                    </button>
-                    <div id="user-info" class="hidden items-center space-x-3">
-                        <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
-                        <span id="user-name" class="text-sm font-medium text-gray-200"></span>
-                        <button id="sign-out-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">Sign Out</button>
-                    </div>
-                </div>
-            </nav>
-        </header>
-        
-        <div id="alert-banner" class="bg-yellow-500 text-black text-center p-2 hidden font-semibold"></div>
-        <main id="main-content" class="flex-grow p-4 md:p-6"></main>
-        <button id="add-task-btn" class="hidden fixed bottom-6 right-6 bg-cyan-500 hover:bg-cyan-600 text-white font-bold w-14 h-14 rounded-full flex items-center justify-center shadow-lg text-3xl z-30">+</button>
-    </div>
+  <div id="app" class="min-h-screen flex flex-col">
+    <header class="bg-gray-800 shadow-lg p-4 flex justify-between items-center sticky top-0 z-20">
+      <h1 class="text-xl md:text-2xl font-bold text-cyan-400">🚀 Placement Prep Command Center</h1>
+      <nav class="flex items-center space-x-4">
+        <div id="nav-buttons" class="hidden items-center space-x-4">
+          <button id="nav-dashboard" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Dashboard</button>
+          <button id="nav-skills" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Skills</button>
+          <button id="report-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Weekly Report</button>
+        </div>
 
-    <div id="modal-container"></div>
-    <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50"></div>
+        <div id="user-auth-container">
+          <button id="sign-in-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-white text-gray-800 hover:bg-gray-200 flex items-center">
+            <svg class="w-4 h-4 mr-2" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c6.49 0 11.92-2.13 15.89-5.81l-7.11-5.52c-2.17 1.46-4.94 2.32-8.78 2.32-6.76 0-12.47-4.55-14.51-10.61H2.26v5.7C6.22 40.05 14.49 46 24 46z"/><path fill="#FBBC05" d="M9.49 27.98c-.45-1.35-.7-2.78-.7-4.28s.25-2.93.7-4.28V13.7H2.26C.81 16.63 0 20.17 0 24s.81 7.37 2.26 10.3l7.23-5.32z"/><path fill="#EA4335" d="M24 9.4c3.51 0 6.58 1.22 9.02 3.54l6.32-6.32C35.91 2.65 30.49 0 24 0 14.49 0 6.22 5.95 2.26 13.7l7.23 5.7c2.04-6.06 7.75-10 14.51-10z"/></svg>
+            Sign in with Google
+          </button>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+          <div id="user-info" class="hidden items-center space-x-3">
+            <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
+            <span id="user-name" class="text-sm font-medium text-gray-200"></span>
+            <button id="sign-out-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">Sign Out</button>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-    <script>
+    <div id="alert-banner" class="bg-yellow-500 text-black text-center p-2 hidden font-semibold"></div>
+    <main id="main-content" class="flex-grow p-4 md:p-6"></main>
+    <button id="add-task-btn" class="hidden fixed bottom-6 right-6 bg-cyan-500 hover:bg-cyan-600 text-white font-bold w-14 h-14 rounded-full flex items-center justify-center shadow-lg text-3xl z-30">+</button>
+  </div>
+
+  <div id="modal-container"></div>
+  <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+  <script>
     document.addEventListener('DOMContentLoaded', () => {
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').then(reg => console.log('SW registered.')).catch(err => console.log('SW registration failed:', err));
-            });
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW registered.'))
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+
+      // =================================================================================
+      // SECTION 1: FIREBASE SETUP & INITIALIZATION
+      // =================================================================================
+      const firebaseConfig = {
+        apiKey: "AIzaSyB0MOIXrgBOZOPD-ImligI8R5I9LcEP-e4",
+        authDomain: "placement-prep-app.firebaseapp.com",
+        projectId: "placement-prep-app",
+        storageBucket: "placement-prep-app.firebasestorage.app",
+        messagingSenderId: "43190903852",
+        appId: "1:43190903852:web:94efe77f5da7a84b841d89"
+      };
+
+      if (!firebaseConfig.apiKey) {
+        document.getElementById('main-content').innerHTML = `<div class="text-center p-8 bg-red-900 rounded-lg"><h2 class="text-2xl font-bold text-red-200">Firebase Not Configured!</h2><p class="mt-2 text-red-300">Please paste your Firebase config object in index.html to get started.</p></div>`;
+        return;
+      }
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+      const provider = new firebase.auth.GoogleAuthProvider();
+
+      // =================================================================================
+      // SECTION 2: GLOBAL STATE & UI ELEMENTS
+      // =================================================================================
+      let appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
+      const motivationalQuotes = [
+        "The best way to predict the future is to create it.",
+        "Success is the sum of small efforts, repeated day in and day out.",
+        "The secret of getting ahead is getting started."
+      ];
+      const mainContent = document.getElementById('main-content');
+      const modalContainer = document.getElementById('modal-container');
+      const navDashboard = document.getElementById('nav-dashboard');
+      const navSkills = document.getElementById('nav-skills');
+
+      // =================================================================================
+      // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
+      // =================================================================================
+      auth.onAuthStateChanged(user => {
+        const signInBtn = document.getElementById('sign-in-btn');
+        const userInfo = document.getElementById('user-info');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const navButtons = document.getElementById('nav-buttons');
+
+        if (user) {
+          // --- USER IS LOGGED IN ---
+          userInfo.classList.remove('hidden');
+          userInfo.classList.add('flex');
+          signInBtn.classList.add('hidden');
+          addTaskBtn.classList.remove('hidden');
+          navButtons.classList.remove('hidden');
+          navButtons.classList.add('flex');
+          document.getElementById('user-pic').src = user.photoURL;
+          document.getElementById('user-name').textContent = user.displayName;
+
+          const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
+          const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
+          const timeLogsCollection = db.collection('users').doc(user.uid).collection('timeLogs');
+
+          initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection);
+        } else {
+          // --- USER IS LOGGED OUT ---
+          userInfo.classList.add('hidden');
+          signInBtn.classList.remove('hidden');
+          addTaskBtn.classList.add('hidden');
+          navButtons.classList.add('hidden');
+
+          appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
+          Object.values(appState.timers).forEach(clearInterval);
+
+          mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to your Command Center</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
+          signInBtn.onclick = () => auth.signInWithPopup(provider);
         }
+      });
 
-        // =================================================================================
-        // SECTION 1: FIREBASE SETUP & INITIALIZATION
-        // =================================================================================
-        const firebaseConfig = {
-              apiKey: "AIzaSyB0MOIXrgBOZOPD-ImligI8R5I9LcEP-e4",
-              authDomain: "placement-prep-app.firebaseapp.com",
-              projectId: "placement-prep-app",
-              storageBucket: "placement-prep-app.firebasestorage.app",
-              messagingSenderId: "43190903852",
-              appId: "1:43190903852:web:94efe77f5da7a84b841d89"
-        };
+      // =================================================================================
+      // SECTION 4: APP INITIALIZATION & DATA LISTENERS
+      // =================================================================================
+      function initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection) {
+        attachDataListeners(tasksCollection, skillsCollection);
 
-        if (!firebaseConfig.apiKey) {
-            document.getElementById('main-content').innerHTML = `<div class="text-center p-8 bg-red-900 rounded-lg"><h2 class="text-2xl font-bold text-red-200">Firebase Not Configured!</h2><p class="mt-2 text-red-300">Please paste your Firebase config object in index.html to get started.</p></div>`;
-            return;
-        }
+        document.getElementById('sign-out-btn').onclick = () => auth.signOut();
+        document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
+        document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const provider = new firebase.auth.GoogleAuthProvider();
+        mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
+        navDashboard.onclick = () => navigate('dashboard');
+        navSkills.onclick = () => navigate('skills');
 
-        // =================================================================================
-        // SECTION 2: GLOBAL STATE & UI ELEMENTS
-        // =================================================================================
-        let appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
-        const motivationalQuotes = ["The best way to predict the future is to create it.", "Success is the sum of small efforts, repeated day in and day out.", "The secret of getting ahead is getting started."];
-        const mainContent = document.getElementById('main-content');
-        const modalContainer = document.getElementById('modal-container');
-        const navDashboard = document.getElementById('nav-dashboard');
-        const navSkills = document.getElementById('nav-skills');
+        navigate('dashboard');
+        add3DTiltEffect();
+      }
 
-        // =================================================================================
-        // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
-        // =================================================================================
-        auth.onAuthStateChanged(user => {
-            const signInBtn = document.getElementById('sign-in-btn');
-            const userInfo = document.getElementById('user-info');
-            const addTaskBtn = document.getElementById('add-task-btn');
-            const navButtons = document.getElementById('nav-buttons');
-
-            if (user) {
-                // --- USER IS LOGGED IN ---
-                userInfo.classList.remove('hidden');
-                userInfo.classList.add('flex');
-                signInBtn.classList.add('hidden');
-                addTaskBtn.classList.remove('hidden');
-                navButtons.classList.remove('hidden');
-                navButtons.classList.add('flex');
-                document.getElementById('user-pic').src = user.photoURL;
-                document.getElementById('user-name').textContent = user.displayName;
-
-                const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
-                const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
-                const timeLogsCollection = db.collection('users').doc(user.uid).collection('timeLogs');
-                
-                initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection);
-            } else {
-                // --- USER IS LOGGED OUT ---
-                userInfo.classList.add('hidden');
-                signInBtn.classList.remove('hidden');
-                addTaskBtn.classList.add('hidden');
-                navButtons.classList.add('hidden');
-
-                appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
-                Object.values(appState.timers).forEach(clearInterval);
-
-                mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to your Command Center</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
-                signInBtn.onclick = () => auth.signInWithPopup(provider);
+      function attachDataListeners(tasksCollection, skillsCollection) {
+        tasksCollection.onSnapshot(snapshot => {
+          appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          Object.values(appState.timers).forEach(clearInterval);
+          appState.timers = {};
+          appState.tasks.filter(t => t.timerRunning && t.lastStartTime).forEach(task => {
+            const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
+            if (card) {
+              const timerDisplay = card.querySelector('.timer-display');
+              appState.timers[task.id] = setInterval(() => {
+                if (!task.lastStartTime) return;
+                const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
+                const totalTime = (task.totalTimeLogged || 0) + elapsed;
+                const h = Math.floor(totalTime / 3600), m = Math.floor((totalTime % 3600) / 60), s = totalTime % 60;
+                if (timerDisplay) timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+              }, 1000);
             }
+          });
+          render();
         });
 
-        // =================================================================================
-        // SECTION 4: APP INITIALIZATION & DATA LISTENERS
-        // =================================================================================
-        function initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection) {
-            attachDataListeners(tasksCollection, skillsCollection);
-            
-            document.getElementById('sign-out-btn').onclick = () => auth.signOut();
-            document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
-            document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
-            
-            mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
-            navDashboard.onclick = () => navigate('dashboard');
-            navSkills.onclick = () => navigate('skills');
-            
-            navigate('dashboard');
-        }
-        
-        function attachDataListeners(tasksCollection, skillsCollection) {
-            tasksCollection.onSnapshot(snapshot => {
-                appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                Object.values(appState.timers).forEach(clearInterval);
-                appState.timers = {};
-                appState.tasks.filter(t => t.timerRunning && t.lastStartTime).forEach(task => {
-                    const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
-                    if (card) {
-                        const timerDisplay = card.querySelector('.timer-display');
-                        appState.timers[task.id] = setInterval(() => {
-                            if (!task.lastStartTime) return;
-                            const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-                            const totalTime = (task.totalTimeLogged || 0) + elapsed;
-                            const h = Math.floor(totalTime / 3600), m = Math.floor((totalTime % 3600) / 60), s = totalTime % 60;
-                            if (timerDisplay) timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                        }, 1000);
-                    }
-                });
-                render();
-            });
+        skillsCollection.onSnapshot(snapshot => {
+          appState.skills = {};
+          snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
+          if (appState.currentView === 'skills') render();
+        });
+      }
 
-            skillsCollection.onSnapshot(snapshot => {
-                appState.skills = {};
-                snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
-                if (appState.currentView === 'skills') render();
-            });
+      // =================================================================================
+      // SECTION 5: EVENT HANDLERS
+      // =================================================================================
+      async function handleFormSubmit(e, tasksCollection) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const taskData = {
+          type: formData.get('type'),
+          title: formData.get('title'),
+          dueDate: formData.get('dueDate'),
+          priority: formData.get('priority'),
+          category: formData.get('category'),
+          url: formData.get('url'),
+          skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
+          completed: false,
+          createdAt: new Date().toISOString(),
+          totalTimeLogged: 0,
+          timerRunning: false,
+          lastStartTime: null
+        };
+        if (taskData.type === 'project') {
+          taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
         }
-        
-        // =================================================================================
-        // SECTION 5: EVENT HANDLERS
-        // =================================================================================
-        async function handleFormSubmit(e, tasksCollection) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const taskData = {
-                type: formData.get('type'), title: formData.get('title'), dueDate: formData.get('dueDate'), priority: formData.get('priority'),
-                category: formData.get('category'), url: formData.get('url'), skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
-                completed: false, createdAt: new Date().toISOString(), totalTimeLogged: 0, timerRunning: false, lastStartTime: null
-            };
-            if (taskData.type === 'project') {
-                taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
-            }
-            await tasksCollection.add(taskData);
-            closeModal();
-            showToast('Task added successfully!');
-        }
+        await tasksCollection.add(taskData);
+        closeModal();
+        showToast('Task added successfully!');
+      }
 
-        async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
+      async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
         const card = e.target.closest('.task-card');
         if (!card) return;
         const taskId = card.dataset.id;
@@ -222,211 +289,242 @@
 
         // --- Logic for the main completion checkbox ---
         if (e.target.matches('.task-checkbox')) {
-            const isCompleted = e.target.checked;
-            await tasksCollection.doc(taskId).update({ completed: isCompleted });
-        if (isCompleted) {
+          const isCompleted = e.target.checked;
+          await tasksCollection.doc(taskId).update({ completed: isCompleted });
+          if (isCompleted) {
             // ... (your existing animation, quote, and skill rating logic is here) ...
             showSkillRatingModal(task, skillsCollection);
-            }
-        } 
+          }
+        }
 
         // --- NEW LOGIC for sub-task completion and confetti ---
         else if (e.target.matches('[data-subtask-index]')) {
-            const index = parseInt(e.target.dataset.subtaskIndex);
+          const index = parseInt(e.target.dataset.subtaskIndex);
 
-        // Mark the sub-task as completed in our local state
-        task.subtasks[index].completed = e.target.checked;
+          // Mark the sub-task as completed in our local state
+          task.subtasks[index].completed = e.target.checked;
 
-        // Check if ALL sub-tasks for this project are now complete
-        const allSubtasksCompleted = task.subtasks.every(st => st.completed);
+          // Check if ALL sub-tasks for this project are now complete
+          const allSubtasksCompleted = task.subtasks.every(st => st.completed);
 
-        if (allSubtasksCompleted) {
+          if (allSubtasksCompleted) {
             // If all are complete, trigger the confetti!
             console.log("Project complete! Firing confetti!");
             confetti({
-                particleCount: 150,
-                spread: 90,
-                origin: { y: 0.6 }
+              particleCount: 150,
+              spread: 90,
+              origin: { y: 0.6 }
             });
+          }
+
+          // Save the updated sub-tasks array back to Firestore
+          await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
         }
 
-            // Save the updated sub-tasks array back to Firestore
-             await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
-        } 
-
-         // --- The rest of the function remains the same ---
         else if (e.target.closest('.delete-btn')) {
-            if (confirm('Are you sure you want to delete this task?')) await tasksCollection.doc(taskId).delete();
-        } 
+          if (confirm('Are you sure you want to delete this task?')) await tasksCollection.doc(taskId).delete();
+        }
         else if (e.target.closest('.timer-btn')) {
-            const isRunning = !task.timerRunning;
-            const updates = { timerRunning: isRunning };
-        if (isRunning) {
+          const isRunning = !task.timerRunning;
+          const updates = { timerRunning: isRunning };
+          if (isRunning) {
             updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
-        } else if (task.lastStartTime) {
-                const duration = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-                updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
-                await timeLogsCollection.add({ taskId, duration, category: task.category, timestamp: new Date() });
-            }
-            await tasksCollection.doc(taskId).update(updates);
+          } else if (task.lastStartTime) {
+            const duration = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
+            updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+            await timeLogsCollection.add({ taskId, duration, category: task.category, timestamp: new Date() });
+          }
+          await tasksCollection.doc(taskId).update(updates);
         }
-    }
-        
-        // =================================================================================
-        // SECTION 6: FIRESTORE LOGIC
-        // =================================================================================
-        async function updateSkill(skillName, rating, skillsCollection) {
-            const skillRef = skillsCollection.doc(skillName);
-            return db.runTransaction(async (transaction) => {
-                const skillDoc = await transaction.get(skillRef);
-                if (!skillDoc.exists) {
-                    transaction.set(skillRef, { name: skillName, totalConfidence: rating, count: 1 });
-                } else {
-                    const newCount = skillDoc.data().count + 1;
-                    const newTotalConfidence = skillDoc.data().totalConfidence + rating;
-                    transaction.update(skillRef, { count: newCount, totalConfidence: newTotalConfidence });
-                }
-            });
-        }
-        
-        // =================================================================================
-        // SECTION 7: UI RENDERING, MODALS, AND UTILITIES
-        // =================================================================================
-        function navigate(view) {
-            appState.currentView = view;
-            navDashboard.classList.toggle('bg-gray-700', view === 'dashboard');
-            navDashboard.classList.toggle('text-white', view === 'dashboard');
-            navSkills.classList.toggle('bg-gray-700', view === 'skills');
-            navSkills.classList.toggle('text-white', view === 'skills');
-            render();
-        }
+      }
 
-        function render() {
-            if (appState.currentView === 'dashboard') renderDashboard();
-            else if (appState.currentView === 'skills') renderSkillsDashboard();
-        }
+      // =================================================================================
+      // SECTION 6: FIRESTORE LOGIC
+      // =================================================================================
+      async function updateSkill(skillName, rating, skillsCollection) {
+        const skillRef = skillsCollection.doc(skillName);
+        return db.runTransaction(async (transaction) => {
+          const skillDoc = await transaction.get(skillRef);
+          if (!skillDoc.exists) {
+            transaction.set(skillRef, { name: skillName, totalConfidence: rating, count: 1 });
+          } else {
+            const newCount = skillDoc.data().count + 1;
+            const newTotalConfidence = skillDoc.data().totalConfidence + rating;
+            transaction.update(skillRef, { count: newCount, totalConfidence: newTotalConfidence });
+          }
+        });
+      }
 
-        function renderDashboard() {
-            mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div id="col-fullstack" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2><div class="space-y-4"></div></div><div id="col-mitx" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2><div class="space-y-4"></div></div><div id="col-nvidia" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2><div class="space-y-4"></div></div></div>`;
-            const { startOfWeek } = getWeekRange(new Date());
-            const tasksToRender = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
-            appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek).forEach(t => tasksToRender.unshift(t));
-            tasksToRender.forEach(task => {
-                const column = mainContent.querySelector(`#col-${task.category.toLowerCase().replace(/ & /g, '')} .space-y-4`);
-                if (column) column.appendChild(createTaskCard(task));
-            });
-            const dueTodayOrOverdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0));
-            const alertBanner = document.getElementById('alert-banner');
-            alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
-            if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
-        }
+      // =================================================================================
+      // SECTION 7: UI RENDERING, MODALS, AND UTILITIES
+      // =================================================================================
+      function navigate(view) {
+        appState.currentView = view;
+        navDashboard.classList.toggle('bg-gray-700', view === 'dashboard');
+        navDashboard.classList.toggle('text-white', view === 'dashboard');
+        navSkills.classList.toggle('bg-gray-700', view === 'skills');
+        navSkills.classList.toggle('text-white', view === 'skills');
+        render();
+      }
 
-        function createTaskCard(task) {
-            const card = document.createElement('div');
-            card.className = `task-card bg-gray-700 p-4 rounded-lg shadow-md ${task.completed ? 'completed' : ''} border-l-4 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]}`;
-            card.dataset.id = task.id;
-            const totalTime = task.totalTimeLogged || 0;
-            const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
-            let projectHTML = '';
-            if (task.type === 'project' && task.subtasks) {
-                const completedSubtasks = task.subtasks.filter(st => st.completed).length;
-                const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
-                projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
-            }
-            card.innerHTML = `<div class="flex justify-between items-start"><div class="flex-grow"><h3 class="font-bold">${task.title}</h3><p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}<div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div></div><div class="flex-shrink-0 relative"><input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}><div class="starburst-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 pointer-events-none"></div></div></div>${projectHTML}<div class="mt-4 flex justify-between items-center text-sm"><div class="flex items-center space-x-2"><button class="timer-btn p-1 rounded-md ${task.timerRunning ? 'bg-red-500' : 'bg-green-500'} hover:opacity-80">${task.timerRunning ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>'}</button><span class="timer-display font-mono">${timeDisplay}</span></div><button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`;
-            return card;
-        }
+      function add3DTiltEffect() {
+        const mainGrid = document.querySelector('#main-content');
 
-        function renderSkillsDashboard() {
-            mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400">Skills Confidence Matrix</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
-            const grid = document.getElementById('skills-grid');
-            if (Object.keys(appState.skills).length === 0) {
-                grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
-                return;
-            }
-            Object.values(appState.skills).sort((a,b) => (a.totalConfidence / a.count) - (b.totalConfidence / b.count)).forEach(skill => {
-                const average = skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
-                const skillCard = document.createElement('div');
-                skillCard.className = 'bg-gray-700 p-4 rounded-lg flex flex-col justify-between';
-                skillCard.innerHTML = `<div><h3 class="font-bold text-lg">${skill.name}</h3><p class="text-sm text-gray-400">Rated ${skill.count} time(s)</p></div><div class="mt-4"><p class="text-sm text-gray-300">Confidence: ${average.toFixed(1)} / 5.0</p><div class="w-full bg-gray-600 rounded-full h-2.5 mt-1"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${average / 5 * 100}%"></div></div></div>`;
-                grid.appendChild(skillCard);
-            });
-        }
+        if (!mainGrid) return;
 
-        function showTaskModal(tasksCollection) {
-            modalContainer.innerHTML = `<div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"><form id="task-form"><h2 class="text-xl font-bold mb-4">Add New Item</h2><div class="space-y-4"><div><label for="task-type" class="block text-sm font-medium text-gray-300">Type</label><select id="task-type" name="type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="task">Standard Task</option><option value="project">Project</option><option value="study_topic">Study Topic</option></select></div><div><label for="task-title" class="block text-sm font-medium text-gray-300">Title</label><input type="text" id="task-title" name="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div id="project-subtasks-container" class="hidden"><label class="block text-sm font-medium text-gray-300">Sub-tasks</label><div id="subtasks-list" class="space-y-2 mt-1"></div><button type="button" id="add-subtask-btn" class="mt-2 text-sm text-cyan-400 hover:underline">+ Add sub-task</button></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="task-due-date" class="block text-sm font-medium text-gray-300">Due Date</label><input type="date" id="task-due-date" name="dueDate" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-priority" class="block text-sm font-medium text-gray-300">Priority</label><select id="task-priority" name="priority" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div><div><label for="task-category" class="block text-sm font-medium text-gray-300">Category</label><select id="task-category" name="category" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="fullstack">Full-Stack & Projects</option><option value="mitx">MITx Machine Learning</option><option value="nvidia">NVIDIA & AI Practice</option></select></div><div><label for="task-url" class="block text-sm font-medium text-gray-300">Resource URL (Optional)</label><input type="url" id="task-url" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-skills" class="block text-sm font-medium text-gray-300">Skills (comma-separated)</label><input type="text" id="task-skills" name="skills" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., React, Python, CUDA"></div></div><div class="mt-6 flex justify-end space-x-4"><button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Add Item</button></div></form></div></div>`;
-            document.getElementById('cancel-task-btn').onclick = closeModal;
-            document.getElementById('task-form').onsubmit = (e) => handleFormSubmit(e, tasksCollection);
-            const taskTypeSelect = document.getElementById('task-type');
-            const subtasksContainer = document.getElementById('project-subtasks-container');
-            taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
-            document.getElementById('add-subtask-btn').onclick = () => {
-                const subtaskList = document.getElementById('subtasks-list');
-                const newSubtask = document.createElement('div');
-                newSubtask.className = 'flex items-center space-x-2';
-                newSubtask.innerHTML = `<input type="text" class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" placeholder="Sub-task description"><button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>`;
-                subtaskList.appendChild(newSubtask);
-                newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
-            };
-        }
+        mainGrid.addEventListener('mousemove', e => {
+          const card = e.target.closest('.task-card');
+          if (!card) return;
 
-        async function showSkillRatingModal(task, skillsCollection) {
-            if (!task.skills || task.skills.length === 0) return;
-            modalContainer.innerHTML = `<div id="skill-rating-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"><h2 class="text-xl font-bold mb-4">Rate Your Confidence</h2><p class="mb-4 text-gray-300">How confident do you feel with these skills after completing "${task.title}"?</p><div id="skills-to-rate" class="space-y-4">${task.skills.map(skill => `<div class="skill-rating-item" data-skill="${skill}"><label class="block font-medium text-gray-200">${skill}</label><div class="star-rating flex items-center space-x-1 text-2xl text-gray-500 mt-1" data-rating="0">${[1,2,3,4,5].map(i => `<svg data-value="${i}" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>`).join('')}</div></div>`).join('')}</div><div class="mt-6 flex justify-end"><button id="submit-ratings-btn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Submit Ratings</button></div></div></div>`;
-            document.querySelectorAll('.star-rating').forEach(ratingContainer => {
-                const stars = ratingContainer.querySelectorAll('svg');
-                ratingContainer.onmouseover = e => { if (e.target.tagName === 'svg') { const hoverValue = e.target.dataset.value; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= hoverValue)); } };
-                ratingContainer.onmouseout = () => { const currentRating = ratingContainer.dataset.rating; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= currentRating)); };
-                ratingContainer.onclick = e => { if (e.target.tagName === 'svg') { ratingContainer.dataset.rating = e.target.dataset.value; } };
-            });
-            document.getElementById('submit-ratings-btn').onclick = async () => {
-                const ratings = Array.from(document.querySelectorAll('.skill-rating-item')).map(item => ({ skill: item.dataset.skill, rating: parseInt(item.querySelector('.star-rating').dataset.rating) }));
-                const validRatings = ratings.filter(r => r.rating > 0);
-                if (validRatings.length > 0) await Promise.all(validRatings.map(r => updateSkill(r.skill, r.rating, skillsCollection)));
-                closeModal();
-            };
-        }
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left; // Mouse X position relative to the card
+          const y = e.clientY - rect.top;  // Mouse Y position relative to the card
 
-        async function showWeeklyReportModal(timeLogsCollection) {
-            const { startOfWeek, endOfWeek } = getWeekRange(new Date());
-            const logsSnapshot = await timeLogsCollection.where('timestamp', '>=', startOfWeek).where('timestamp', '<=', endOfWeek).get();
-            const weeklyData = { fullstack: 0, mitx: 0, nvidia: 0 };
-            logsSnapshot.forEach(doc => {
-                const log = doc.data();
-                if (weeklyData[log.category] !== undefined) weeklyData[log.category] += log.duration;
-            });
-            const formatTime = (seconds) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-            modalContainer.innerHTML = `<div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg"><h2 class="text-xl font-bold mb-4">Weekly Performance Report</h2><div class="space-y-4"><div><h3 class="font-semibold text-green-400">Full-Stack & Projects</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.fullstack)}</span></p></div><div><h3 class="font-semibold text-blue-400">MITx Machine Learning</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.mitx)}</span></p></div><div><h3 class="font-semibold text-purple-400">NVIDIA & AI Practice</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.nvidia)}</span></p></div></div><div class="mt-6 flex justify-end"><button id="close-report-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Close</button></div></div></div>`;
-            document.getElementById('close-report-btn').onclick = closeModal;
-        }
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
 
-        function closeModal() { modalContainer.innerHTML = ''; }
+          const rotateX = (y - centerY) / 10; // The '10' controls the tilt intensity
+          const rotateY = (centerX - x) / 10;
 
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.className = 'bg-gray-700 text-white px-6 py-3 rounded-lg shadow-lg animate-toast-in';
-            toast.textContent = message;
-            document.getElementById('toast-container').appendChild(toast);
-            setTimeout(() => {
-                toast.classList.remove('animate-toast-in');
-                toast.classList.add('animate-toast-out');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        }
+          // Apply the rotation and glow position using CSS variables
+          card.style.setProperty('--mouse-x', `${x}px`);
+          card.style.setProperty('--mouse-y', `${y}px`);
+          card.style.transform = `perspective(1000px) translateZ(20px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        });
 
-        function getWeekRange(date) {
-            const startOfWeek = new Date(date);
-            const day = startOfWeek.getDay();
-            const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-            startOfWeek.setDate(diff);
-            startOfWeek.setHours(0, 0, 0, 0);
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-            return { startOfWeek, endOfWeek };
+        mainGrid.addEventListener('mouseleave', e => {
+          // Reset all cards when the mouse leaves the main grid area
+          document.querySelectorAll('.task-card').forEach(card => {
+            card.style.transform = `perspective(1000px) translateZ(0) rotateX(0deg) rotateY(0deg)`;
+          });
+        });
+      }
+
+      function render() {
+        if (appState.currentView === 'dashboard') renderDashboard();
+        else if (appState.currentView === 'skills') renderSkillsDashboard();
+      }
+
+      function renderDashboard() {
+        mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div id="col-fullstack" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2><div class="space-y-4"></div></div><div id="col-mitx" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2><div class="space-y-4"></div></div><div id="col-nvidia" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2><div class="space-y-4"></div></div></div>`;
+        const { startOfWeek } = getWeekRange(new Date());
+        const tasksToRender = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
+        appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek).forEach(t => tasksToRender.unshift(t));
+        tasksToRender.forEach(task => {
+          const column = mainContent.querySelector(`#col-${task.category.toLowerCase().replace(/ & /g, '')} .space-y-4`);
+          if (column) column.appendChild(createTaskCard(task));
+        });
+        const dueTodayOrOverdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0));
+        const alertBanner = document.getElementById('alert-banner');
+        alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
+        if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
+      }
+
+      function createTaskCard(task) {
+        const card = document.createElement('div');
+        card.className = `task-card bg-gray-700 p-4 rounded-lg shadow-md ${task.completed ? 'completed' : ''} border-l-4 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]}`;
+        card.dataset.id = task.id;
+        const totalTime = task.totalTimeLogged || 0;
+        const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
+        let projectHTML = '';
+        if (task.type === 'project' && task.subtasks) {
+          const completedSubtasks = task.subtasks.filter(st => st.completed).length;
+          const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
+          projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
         }
+        card.innerHTML = `<div class="flex justify-between items-start"><div class="flex-grow"><h3 class="font-bold">${task.title}</h3><p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}<div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div></div><div class="flex-shrink-0 relative"><input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}><div class="starburst-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 pointer-events-none"></div></div></div>${projectHTML}<div class="mt-4 flex justify-between items-center text-sm"><div class="flex items-center space-x-2"><button class="timer-btn p-1 rounded-md ${task.timerRunning ? 'bg-red-500' : 'bg-green-500'} hover:opacity-80">${task.timerRunning ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>'}</button><span class="timer-display font-mono">${timeDisplay}</span></div><button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`;
+        return card;
+      }
+
+      function renderSkillsDashboard() {
+        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400">Skills Confidence Matrix</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
+        const grid = document.getElementById('skills-grid');
+        if (Object.keys(appState.skills).length === 0) {
+          grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
+          return;
+        }
+        Object.values(appState.skills).sort((a,b) => (a.totalConfidence / a.count) - (b.totalConfidence / b.count)).forEach(skill => {
+          const average = skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
+          const skillCard = document.createElement('div');
+          skillCard.className = 'bg-gray-700 p-4 rounded-lg flex flex-col justify-between';
+          skillCard.innerHTML = `<div><h3 class="font-bold text-lg">${skill.name}</h3><p class="text-sm text-gray-400">Rated ${skill.count} time(s)</p></div><div class="mt-4"><p class="text-sm text-gray-300">Confidence: ${average.toFixed(1)} / 5.0</p><div class="w-full bg-gray-600 rounded-full h-2.5 mt-1"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${average / 5 * 100}%"></div></div></div>`;
+          grid.appendChild(skillCard);
+        });
+      }
+
+      function showTaskModal(tasksCollection) {
+        modalContainer.innerHTML = `<div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"><form id="task-form"><h2 class="text-xl font-bold mb-4">Add New Item</h2><div class="space-y-4"><div><label for="task-type" class="block text-sm font-medium text-gray-300">Type</label><select id="task-type" name="type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="task">Standard Task</option><option value="project">Project</option><option value="study_topic">Study Topic</option></select></div><div><label for="task-title" class="block text-sm font-medium text-gray-300">Title</label><input type="text" id="task-title" name="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div id="project-subtasks-container" class="hidden"><label class="block text-sm font-medium text-gray-300">Sub-tasks</label><div id="subtasks-list" class="space-y-2 mt-1"></div><button type="button" id="add-subtask-btn" class="mt-2 text-sm text-cyan-400 hover:underline">+ Add sub-task</button></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="task-due-date" class="block text-sm font-medium text-gray-300">Due Date</label><input type="date" id="task-due-date" name="dueDate" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-priority" class="block text-sm font-medium text-gray-300">Priority</label><select id="task-priority" name="priority" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div><div><label for="task-category" class="block text-sm font-medium text-gray-300">Category</label><select id="task-category" name="category" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="fullstack">Full-Stack & Projects</option><option value="mitx">MITx Machine Learning</option><option value="nvidia">NVIDIA & AI Practice</option></select></div><div><label for="task-url" class="block text-sm font-medium text-gray-300">Resource URL (Optional)</label><input type="url" id="task-url" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-skills" class="block text-sm font-medium text-gray-300">Skills (comma-separated)</label><input type="text" id="task-skills" name="skills" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., React, Python, CUDA"></div></div><div class="mt-6 flex justify-end space-x-4"><button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Add Item</button></div></form></div></div>`;
+        document.getElementById('cancel-task-btn').onclick = closeModal;
+        document.getElementById('task-form').onsubmit = (e) => handleFormSubmit(e, tasksCollection);
+        const taskTypeSelect = document.getElementById('task-type');
+        const subtasksContainer = document.getElementById('project-subtasks-container');
+        taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
+        document.getElementById('add-subtask-btn').onclick = () => {
+          const subtaskList = document.getElementById('subtasks-list');
+          const newSubtask = document.createElement('div');
+          newSubtask.className = 'flex items-center space-x-2';
+          newSubtask.innerHTML = `<input type="text" class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" placeholder="Sub-task description"><button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>`;
+          subtaskList.appendChild(newSubtask);
+          newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
+        };
+      }
+
+      async function showSkillRatingModal(task, skillsCollection) {
+        if (!task.skills || task.skills.length === 0) return;
+        modalContainer.innerHTML = `<div id="skill-rating-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"><h2 class="text-xl font-bold mb-4">Rate Your Confidence</h2><p class="mb-4 text-gray-300">How confident do you feel with these skills after completing "${task.title}"?</p><div id="skills-to-rate" class="space-y-4">${task.skills.map(skill => `<div class="skill-rating-item" data-skill="${skill}"><label class="block font-medium text-gray-200">${skill}</label><div class="star-rating flex items-center space-x-1 text-2xl text-gray-500 mt-1" data-rating="0">${[1,2,3,4,5].map(i => `<svg data-value="${i}" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>`).join('')}</div></div>`).join('')}</div><div class="mt-6 flex justify-end"><button id="submit-ratings-btn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Submit Ratings</button></div></div></div>`;
+        document.querySelectorAll('.star-rating').forEach(ratingContainer => {
+          const stars = ratingContainer.querySelectorAll('svg');
+          ratingContainer.onmouseover = e => { if (e.target.tagName === 'svg') { const hoverValue = e.target.dataset.value; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= hoverValue)); } };
+          ratingContainer.onmouseout = () => { const currentRating = ratingContainer.dataset.rating; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= currentRating)); };
+          ratingContainer.onclick = e => { if (e.target.tagName === 'svg') { ratingContainer.dataset.rating = e.target.dataset.value; } };
+        });
+        document.getElementById('submit-ratings-btn').onclick = async () => {
+          const ratings = Array.from(document.querySelectorAll('.skill-rating-item')).map(item => ({ skill: item.dataset.skill, rating: parseInt(item.querySelector('.star-rating').dataset.rating) }));
+          const validRatings = ratings.filter(r => r.rating > 0);
+          if (validRatings.length > 0) await Promise.all(validRatings.map(r => updateSkill(r.skill, r.rating, skillsCollection)));
+          closeModal();
+        };
+      }
+
+      async function showWeeklyReportModal(timeLogsCollection) {
+        const { startOfWeek, endOfWeek } = getWeekRange(new Date());
+        const logsSnapshot = await timeLogsCollection.where('timestamp', '>=', startOfWeek).where('timestamp', '<=', endOfWeek).get();
+        const weeklyData = { fullstack: 0, mitx: 0, nvidia: 0 };
+        logsSnapshot.forEach(doc => {
+          const log = doc.data();
+          if (weeklyData[log.category] !== undefined) weeklyData[log.category] += log.duration;
+        });
+        const formatTime = (seconds) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+        modalContainer.innerHTML = `<div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg"><h2 class="text-xl font-bold mb-4">Weekly Performance Report</h2><div class="space-y-4"><div><h3 class="font-semibold text-green-400">Full-Stack & Projects</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.fullstack)}</span></p></div><div><h3 class="font-semibold text-blue-400">MITx Machine Learning</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.mitx)}</span></p></div><div><h3 class="font-semibold text-purple-400">NVIDIA & AI Practice</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.nvidia)}</span></p></div></div><div class="mt-6 flex justify-end"><button id="close-report-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Close</button></div></div></div>`;
+        document.getElementById('close-report-btn').onclick = closeModal;
+      }
+
+      function closeModal() { modalContainer.innerHTML = ''; }
+
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'bg-gray-700 text-white px-6 py-3 rounded-lg shadow-lg animate-toast-in';
+        toast.textContent = message;
+        document.getElementById('toast-container').appendChild(toast);
+        setTimeout(() => {
+          toast.classList.remove('animate-toast-in');
+          toast.classList.add('animate-toast-out');
+          setTimeout(() => toast.remove(), 500);
+        }, 3000);
+      }
+
+      function getWeekRange(date) {
+        const startOfWeek = new Date(date);
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        return { startOfWeek, endOfWeek };
+      }
     });
-    </script>
+  </script>
 </body>
-
 </html>
