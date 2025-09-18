@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -92,6 +93,7 @@
         <div id="nav-buttons" class="hidden items-center space-x-4">
           <button id="nav-dashboard" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Dashboard</button>
           <button id="nav-skills" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Skills</button>
+          <button id="nav-insights" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Insights</button>
           <button id="report-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Weekly Report</button>
         </div>
 
@@ -221,6 +223,8 @@
         mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
         navDashboard.onclick = () => navigate('dashboard');
         navSkills.onclick = () => navigate('skills');
+        document.getElementById('nav-insights').onclick = () => navigate('insights');
+
 
         navigate('dashboard');
         add3DTiltEffect();
@@ -358,6 +362,8 @@
         navDashboard.classList.toggle('text-white', view === 'dashboard');
         navSkills.classList.toggle('bg-gray-700', view === 'skills');
         navSkills.classList.toggle('text-white', view === 'skills');
+        document.getElementById('nav-insights').classList.toggle('bg-gray-700', view === 'insights');
+        document.getElementById('nav-insights').classList.toggle('text-white', view === 'insights');
         render();
       }
 
@@ -452,6 +458,7 @@ function add3DTiltEffect() {
       function render() {
         if (appState.currentView === 'dashboard') renderDashboard();
         else if (appState.currentView === 'skills') renderSkillsDashboard();
+        else if (appState.currentView === 'insights') renderInsightsDashboard(db.collection('users').doc(auth.currentUser.uid).collection('timeLogs'));
       }
 
       function renderDashboard() {
@@ -658,6 +665,146 @@ function setupTimers() {
           closeModal();
         };
       }
+      async function renderInsightsDashboard(timeLogsCollection) {
+          try {
+              // Set up initial UI
+              mainContent.innerHTML = `
+                  <div class="bg-gray-800 rounded-lg p-6">
+                      <h2 class="text-2xl font-bold mb-6 text-cyan-400">Insights Dashboard</h2>
+                      <div class="max-w-md mx-auto">
+                          <h3 class="text-lg font-semibold text-center mb-4">Total Time Allocation</h3>
+                          <canvas id="timeAllocationChart"></canvas>
+                      </div>
+                      <div id="chart-error" class="hidden text-red-400 text-center mt-4"></div>
+                  </div>
+              `;
+
+              // Fetch and process time logs
+              const timeData = await fetchTimeData(timeLogsCollection);
+              
+              // Create and render chart
+              await createChart(timeData);
+              
+          } catch (error) {
+              console.error('Error rendering insights dashboard:', error);
+              showError('Failed to load insights dashboard. Please try again later.');
+          }
+      }
+
+async function fetchTimeData(timeLogsCollection) {
+    const timeData = {
+        fullstack: 0,
+        mitx: 0,
+        nvidia: 0
+    };
+
+    try {
+        const logsSnapshot = await timeLogsCollection.get();
+        
+        logsSnapshot.forEach(doc => {
+            const log = doc.data();
+            
+            // Validate log data
+            if (!log.category || !Number.isFinite(log.duration)) {
+                console.warn('Invalid log data:', doc.id, log);
+                return;
+            }
+
+            // Normalize category name and add duration
+            const category = log.category.toLowerCase().replace(/ & /g, '');
+            if (timeData.hasOwnProperty(category)) {
+                timeData[category] += Math.max(0, log.duration);
+            }
+        });
+
+        return timeData;
+    } catch (error) {
+        throw new Error(`Failed to fetch time logs: ${error.message}`);
+    }
+}
+
+async function createChart(timeData) {
+    const canvas = document.getElementById('timeAllocationChart');
+    if (!canvas) {
+        throw new Error('Canvas element not found');
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        throw new Error('Failed to get canvas context');
+    }
+
+    const chartConfig = {
+        type: 'doughnut',
+        data: {
+            labels: ['Full-Stack & Projects', 'MITx Machine Learning', 'NVIDIA & AI Practice'],
+            datasets: [{
+                label: 'Time Spent (in minutes)',
+                data: [
+                    convertToMinutes(timeData.fullstack),
+                    convertToMinutes(timeData.mitx),
+                    convertToMinutes(timeData.nvidia)
+                ],
+                backgroundColor: [
+                    'rgba(52, 211, 153, 0.7)',  // Green
+                    'rgba(96, 165, 250, 0.7)',  // Blue
+                    'rgba(192, 132, 252, 0.7)'  // Purple
+                ],
+                borderColor: [
+                    '#10B981',
+                    '#3B82F6',
+                    '#A855F7'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#d1d5db'
+                    }
+                },
+                title: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const minutes = context.raw;
+                            return `${minutes} minutes (${formatHours(minutes)})`;
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    try {
+        return new Chart(ctx, chartConfig);
+    } catch (error) {
+        throw new Error(`Failed to create chart: ${error.message}`);
+    }
+}
+
+function convertToMinutes(seconds) {
+    return Math.round(Math.max(0, seconds) / 60);
+}
+
+function formatHours(minutes) {
+    const hours = (minutes / 60).toFixed(1);
+    return `${hours} hours`;
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('chart-error');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+}
 
       async function showWeeklyReportModal(timeLogsCollection) {
         const { startOfWeek, endOfWeek } = getWeekRange(new Date());
