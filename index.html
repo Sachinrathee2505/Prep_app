@@ -455,63 +455,114 @@ function add3DTiltEffect() {
       }
 
       function renderDashboard() {
-        mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div id="col-fullstack" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2><div class="space-y-4"></div></div><div id="col-mitx" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2><div class="space-y-4"></div></div><div id="col-nvidia" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2><div class="space-y-4"></div></div></div>`;
-        const { startOfWeek } = getWeekRange(new Date());
-        const tasksToRender = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
-        appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek).forEach(t => tasksToRender.unshift(t));
-        tasksToRender.forEach(task => {
-          const column = mainContent.querySelector(`#col-${task.category.toLowerCase().replace(/ & /g, '')} .space-y-4`);
-          if (column) column.appendChild(createTaskCard(task));
-        });
-        const dueTodayOrOverdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0));
-        const alertBanner = document.getElementById('alert-banner');
-        alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
-        if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
-        function renderDashboard() {
-    mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><div id="col-fullstack" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2><div class="space-y-4"></div></div><div id="col-mitx" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2><div class="space-y-4"></div></div><div id="col-nvidia" class="bg-gray-800 rounded-lg p-4"><h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2><div class="space-y-4"></div></div></div>`;
+    // Clear existing timers first
+    cleanupTimers();
     
-    const { startOfWeek } = getWeekRange(new Date());
-    const overdueTasks = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek);
-    const thisWeekTasks = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
+    // Render main content
+    mainContent.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="col-fullstack" class="bg-gray-800 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2>
+                <div class="space-y-4"></div>
+            </div>
+            <div id="col-mitx" class="bg-gray-800 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2>
+                <div class="space-y-4"></div>
+            </div>
+            <div id="col-nvidia" class="bg-gray-800 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2>
+                <div class="space-y-4"></div>
+            </div>
+        </div>
+    `;
+    
+    // Task filtering with safer date handling
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { startOfWeek } = getWeekRange(today);
+    
+    const overdueTasks = appState.tasks.filter(t => 
+        !t.completed && new Date(t.dueDate) < startOfWeek
+    );
+    
+    const thisWeekTasks = appState.tasks.filter(t => 
+        !t.completed && new Date(t.dueDate) >= startOfWeek
+    );
+    
     const tasksToRender = [...overdueTasks, ...thisWeekTasks];
 
+    // Render tasks with error handling
     tasksToRender.forEach(task => {
-        const column = mainContent.querySelector(`#col-${task.category.toLowerCase().replace(/ & /g, '')} .space-y-4`);
-        if (column) column.appendChild(createTaskCard(task));
+        const columnId = task.category.toLowerCase().replace(/ & /g, '');
+        const column = mainContent.querySelector(`#col-${columnId} .space-y-4`);
+        if (!column) {
+            console.warn(`Column not found for category: ${task.category}`);
+            return;
+        }
+        column.appendChild(createTaskCard(task));
     });
 
-    const dueTodayOrOverdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate).setHours(0,0,0,0) <= new Date().setHours(0,0,0,0));
+    // Update alert banner
+    updateAlertBanner();
+
+    // Set up new timers
+    setupTimers();
+}
+
+function cleanupTimers() {
+    if (appState.timers) {
+        Object.values(appState.timers).forEach(timerId => {
+            if (timerId) clearInterval(timerId);
+        });
+        appState.timers = {};
+    }
+}
+
+function updateAlertBanner() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const dueTodayOrOverdue = appState.tasks.filter(t => {
+        if (t.completed) return false;
+        const dueDate = new Date(t.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate <= today;
+    });
+
     const alertBanner = document.getElementById('alert-banner');
+    if (!alertBanner) return;
+    
     alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
-    if (dueTodayOrOverdue.length > 0) alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
+    if (dueTodayOrOverdue.length > 0) {
+        alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
+    }
+}
 
-    // Clear any old timers before setting new ones
-    Object.values(appState.timers).forEach(clearInterval);
-    appState.timers = {};
+function setupTimers() {
+    appState.tasks
+        .filter(t => t.timerRunning)
+        .forEach(task => {
+            const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
+            const timerDisplay = card?.querySelector('.timer-display');
+            
+            if (!timerDisplay) return;
 
-    // Find all tasks that should be running and set up their intervals
-    appState.tasks.filter(t => t.timerRunning).forEach(task => {
-        const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
-        if (card) {
-            const timerDisplay = card.querySelector('.timer-display');
             appState.timers[task.id] = setInterval(() => {
-                // This check prevents errors if the timestamp hasn't synced from the server yet
-                if (!task.lastStartTime || !task.lastStartTime.toDate) return; 
+                if (!task.lastStartTime?.toDate) return;
 
                 const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
                 const totalTime = (task.totalTimeLogged || 0) + elapsed;
+                
                 const h = Math.floor(totalTime / 3600);
                 const m = Math.floor((totalTime % 3600) / 60);
                 const s = totalTime % 60;
 
-                if (timerDisplay) {
-                    timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                }
+                timerDisplay.textContent = [h, m, s]
+                    .map(n => String(n).padStart(2, '0'))
+                    .join(':');
             }, 1000);
-        }
-    });
+        });
 }
-      }
 
       function createTaskCard(task) {
           const card = document.createElement('div');
@@ -650,3 +701,4 @@ function add3DTiltEffect() {
   </script>
 </body>
 </html>
+
