@@ -165,8 +165,6 @@
                   console.warn('Firestore persistence failed: Browser not supported.');
               }
           });
-      // Initialize the connection manager to handle the offline UI banner
-      const connectionManager = new ConnectionManager();
             const auth = firebase.auth();
             const provider = new firebase.auth.GoogleAuthProvider();
 
@@ -494,7 +492,9 @@ class ConnectionManager {
     hideBanner() {
         this.banner.classList.add('translate-y-full');
     }
-}
+}      
+const connectionManager = new ConnectionManager(); // Initialize the connection manager to handle the offline UI banner
+
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
@@ -1108,4 +1108,5 @@ function showError(message) {
   </script>
 </body>
 </html>
+
 
