@@ -198,7 +198,6 @@
               }
           });
       // Initialize the connection manager to handle the offline UI banner
-      const connectionManager = new ConnectionManager();
             const auth = firebase.auth();
             const provider = new firebase.auth.GoogleAuthProvider();
 
@@ -773,6 +772,7 @@ class FocusMode {
       localStorage.removeItem('focusSession');
   }
 }
+       const connectionManager = new ConnectionManager();
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
@@ -1433,5 +1433,6 @@ function showError(message) {
 </div>
 </body>
 </html>
+
 
 
