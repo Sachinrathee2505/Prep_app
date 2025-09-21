@@ -81,8 +81,7 @@
 
       .completed { text-decoration: line-through; opacity: 0.6; }
       .star-rating svg { cursor: pointer; }
-  </style>
-/* Focus Mode Styles */
+    /* Focus Mode Styles */
 .focus-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
 .focus-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
 .focus-container { width: 90%; max-width: 600px; text-align: center; position: relative; }
@@ -114,6 +113,7 @@
 .break-timer { font-size: 4rem; color: #60a5fa; font-weight: 200; margin-bottom: 2rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .focus-overlay, .focus-content, .focus-btn, .preset-btn { animation: none; transition: none; } .focus-progress-bar { transition: none; } }
 @media (max-width: 640px) { .focus-timer { font-size: 4rem; } .focus-task-name { font-size: 1.5rem; } .preset-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
 </head>
 
 <body class="bg-gray-900 text-gray-100 font-sans antialiased">
@@ -1433,4 +1433,5 @@ function showError(message) {
 </div>
 </body>
 </html>
+
 
