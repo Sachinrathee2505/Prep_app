@@ -81,38 +81,38 @@
 
       .completed { text-decoration: line-through; opacity: 0.6; }
       .star-rating svg { cursor: pointer; }
-    /* Focus Mode Styles */
-.focus-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-.focus-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
-.focus-container { width: 90%; max-width: 600px; text-align: center; position: relative; }
-.focus-close { position: absolute; top: -40px; right: 0; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-.focus-close:hover { background: rgba(255, 255, 255, 0.2); color: white; transform: scale(1.1); }
-.focus-content { animation: focusSlideIn 0.4s ease-out; }
-@keyframes focusSlideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.focus-task-name { font-size: 2rem; font-weight: 600; color: white; margin: 0 0 3rem; opacity: 0.9; }
-.focus-timer-group { margin-bottom: 3rem; }
-.focus-timer { font-size: 6rem; font-weight: 200; color: white; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-bottom: 1rem; }
-.focus-progress { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
-.focus-progress-bar { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 1s linear; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
-.focus-status { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; }
-.focus-controls { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; }
-.focus-btn { padding: 0.75rem 2rem; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
-.focus-btn-primary { background: #10b981; color: white; }
-.focus-btn-primary:hover { background: #059669; transform: translateY(-1px); }
-.focus-btn-secondary { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); }
-.focus-btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
-.focus-presets h2 { color: white; font-size: 1.5rem; margin-bottom: 2rem; font-weight: 500; }
-.preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
-.preset-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem 1rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
-.preset-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
-.preset-time { font-size: 1.5rem; font-weight: 600; color: white; }
-.preset-label { font-size: 0.875rem; color: rgba(255, 255, 255, 0.6); }
-.break-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 10001; display: flex; align-items: center; justify-content: center; text-align: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-.break-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
-.break-content h2 { color: white; font-size: 2rem; margin-bottom: 2rem; }
-.break-timer { font-size: 4rem; color: #60a5fa; font-weight: 200; margin-bottom: 2rem; font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .focus-overlay, .focus-content, .focus-btn, .preset-btn { animation: none; transition: none; } .focus-progress-bar { transition: none; } }
-@media (max-width: 640px) { .focus-timer { font-size: 4rem; } .focus-task-name { font-size: 1.5rem; } .preset-grid { grid-template-columns: repeat(2, 1fr); } }
+      /* Focus Mode Styles */
+    .focus-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+    .focus-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
+    .focus-container { width: 90%; max-width: 600px; text-align: center; position: relative; }
+    .focus-close { position: absolute; top: -40px; right: 0; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+    .focus-close:hover { background: rgba(255, 255, 255, 0.2); color: white; transform: scale(1.1); }
+    .focus-content { animation: focusSlideIn 0.4s ease-out; }
+    @keyframes focusSlideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .focus-task-name { font-size: 2rem; font-weight: 600; color: white; margin: 0 0 3rem; opacity: 0.9; }
+    .focus-timer-group { margin-bottom: 3rem; }
+    .focus-timer { font-size: 6rem; font-weight: 200; color: white; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-bottom: 1rem; }
+    .focus-progress { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
+    .focus-progress-bar { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 1s linear; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+    .focus-status { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; }
+    .focus-controls { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; }
+    .focus-btn { padding: 0.75rem 2rem; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+    .focus-btn-primary { background: #10b981; color: white; }
+    .focus-btn-primary:hover { background: #059669; transform: translateY(-1px); }
+    .focus-btn-secondary { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); }
+    .focus-btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+    .focus-presets h2 { color: white; font-size: 1.5rem; margin-bottom: 2rem; font-weight: 500; }
+    .preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
+    .preset-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem 1rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
+    .preset-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+    .preset-time { font-size: 1.5rem; font-weight: 600; color: white; }
+    .preset-label { font-size: 0.875rem; color: rgba(255, 255, 255, 0.6); }
+    .break-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 10001; display: flex; align-items: center; justify-content: center; text-align: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+    .break-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
+    .break-content h2 { color: white; font-size: 2rem; margin-bottom: 2rem; }
+    .break-timer { font-size: 4rem; color: #60a5fa; font-weight: 200; margin-bottom: 2rem; font-variant-numeric: tabular-nums; }
+    @media (prefers-reduced-motion: reduce) { .focus-overlay, .focus-content, .focus-btn, .preset-btn { animation: none; transition: none; } .focus-progress-bar { transition: none; } }
+    @media (max-width: 640px) { .focus-timer { font-size: 4rem; } .focus-task-name { font-size: 1.5rem; } .preset-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 
@@ -135,14 +135,25 @@
             Sign in with Google
           </button>
 
-          <div id="user-info" class="hidden items-center space-x-3">
-            <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
-            <span id="user-name" class="text-sm font-medium text-gray-200"></span>
-            <div id="streak-display" class="hidden items-center space-x-1 px-2 py-1 bg-gray-700 rounded-full" title="Current Streak">
-                <span class="text-orange-400">🔥</span>
-                <span id="streak-count" class="text-sm font-bold text-white">0</span>
-            </div>
-            <button id="sign-out-btn" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white">Sign Out</button>
+          <div id="user-info" class="hidden items-center relative">
+              <button id="user-menu-button" type="button" class="flex text-sm bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                  <span class="sr-only">Open user menu</span>
+                  <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
+              </button>
+
+              <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" tabindex="-1">
+                  <div class="px-4 py-3">
+                      <p class="text-sm text-white">Signed in as</p>
+                      <p id="user-name" class="text-sm font-medium text-gray-300 truncate"></p>
+                  </div>
+                  <div class="border-t border-gray-600"></div>
+                  <div id="streak-display" class="flex items-center space-x-2 px-4 py-2" title="Current Streak">
+                      <span class="text-orange-400">🔥</span>
+                      <span id="streak-count" class="text-sm font-bold text-white">0</span>
+                  </div>
+                  <div class="border-t border-gray-600"></div>
+                  <a href="#" id="sign-out-btn" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" role="menuitem" tabindex="-1">Sign out</a>
+              </div>
           </div>
         </div>
       </nav>
@@ -275,13 +286,31 @@
                   streakDisplay.classList.add('hidden');
               }
         });
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userMenu = document.getElementById('user-menu');
+        document.getElementById('sign-out-btn').onclick = () => auth.signOut();
+
+        // Toggle the menu when the profile picture is clicked
+        userMenuButton.addEventListener('click', () => {
+            userMenu.classList.toggle('hidden');
+        });
+
+        // Close the menu if the user clicks anywhere outside of it
+        window.addEventListener('click', (event) => {
+            if (!userMenu.classList.contains('hidden')) {
+                // Check if the click was outside the button AND outside the menu
+                if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                    userMenu.classList.add('hidden');
+                }
+            }
+        });
+        signOutBtn.onclick = () => auth.signOut();
         focusMode = new FocusMode({
         db: db,
         uid: auth.currentUser.uid,
         confetti: confetti // Pass the confetti function
         });
 
-        document.getElementById('sign-out-btn').onclick = () => auth.signOut();
         document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
         document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
 
@@ -772,7 +801,7 @@ class FocusMode {
       localStorage.removeItem('focusSession');
   }
 }
-       const connectionManager = new ConnectionManager();
+      const connectionManager = new ConnectionManager();
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
@@ -1433,8 +1462,4 @@ function showError(message) {
 </div>
 </body>
 </html>
-
-
-
-
 
