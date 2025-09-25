@@ -247,54 +247,52 @@
       // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
       // =================================================================================
       auth.onAuthStateChanged(user => {
-        const signInBtn = document.getElementById('sign-in-btn');
-        const userInfo = document.getElementById('user-info');
-        const addTaskBtn = document.getElementById('add-task-btn');
-        const navButtons = document.getElementById('nav-buttons');
+          const signInBtn = document.getElementById('sign-in-btn');
+          const userInfo = document.getElementById('user-info');
+          const addTaskBtn = document.getElementById('add-task-btn');
+          const navButtons = document.getElementById('nav-buttons');
 
-        if (user) {
-          // --- USER IS LOGGED IN ---
-          appState.isLoading = true;
-          userInfo.classList.remove('hidden');
-          userInfo.classList.add('flex');
-          signInBtn.classList.add('hidden');
-          addTaskBtn.classList.remove('hidden');
-          navButtons.classList.remove('hidden');
-          navButtons.classList.add('flex');
-          document.getElementById('user-pic').src = user.photoURL;
-          document.getElementById('user-name').textContent = user.displayName;
+          if (user) {
+              // --- USER IS LOGGED IN ---
+              appState.isLoading = true;
+              userInfo.classList.remove('hidden');
+              userInfo.classList.add('flex');
+              signInBtn.classList.add('hidden');
+              addTaskBtn.classList.remove('hidden');
+              navButtons.classList.remove('hidden');
+              navButtons.classList.add('flex');
+              document.getElementById('user-pic').src = user.photoURL;
+              document.getElementById('user-name').textContent = user.displayName;
 
-          const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
-          const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
-          const timeLogsCollection = db.collection('users').doc(user.uid).collection('timeLogs');
+              const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
+              const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
+              const timeLogsCollection = db.collection('users').doc(user.uid).collection('timeLogs');
 
-          initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection);
-        } else {
-          // --- USER IS LOGGED OUT ---
-          userInfo.classList.add('hidden');
-          signInBtn.classList.remove('hidden');
-          addTaskBtn.classList.add('hidden');
-          navButtons.classList.add('hidden');
-
-          appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
-          Object.values(appState.timers).forEach(clearInterval);
-
-          mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to your Command Center</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
-          signInBtn.onclick = () => auth.signInWithPopup(provider);
-        }
+              initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection);
+              
+          } else {
+              // --- USER IS LOGGED OUT ---
+              userInfo.classList.add('hidden');
+              signInBtn.classList.remove('hidden');
+              addTaskBtn.classList.add('hidden');
+              navButtons.classList.add('hidden');
+              appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {}, isLoading: false };
+              Object.values(appState.timers).forEach(clearInterval);
+              mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to Level Up Hub</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
+              signInBtn.onclick = () => auth.signInWithPopup(provider);
+          }
       });
 
       // =================================================================================
       // SECTION 4: APP INITIALIZATION & DATA LISTENERS
       // =================================================================================
-      function initializeAppLogic(tasksCollection, skillsCollection, timeLogsCollection) {
-        attachDataListeners(tasksCollection, skillsCollection);
-        const streakRef = db.collection('streaks').doc(auth.currentUser.uid);
-        streakRef.onSnapshot(doc => {
+      function initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection) {
+          attachDataListeners(tasksCollection, skillsCollection);
+          const streakRef = db.collection('streaks').doc(user.uid);
+          streakRef.onSnapshot(doc => {
               const streakData = doc.data() || { current: 0 };
               const streakDisplay = document.getElementById('streak-display');
               const streakCount = document.getElementById('streak-count');
-
               if (streakData.current > 0) {
                   streakCount.textContent = streakData.current;
                   streakDisplay.classList.remove('hidden');
@@ -302,43 +300,38 @@
               } else {
                   streakDisplay.classList.add('hidden');
               }
-        });
-        const userMenuButton = document.getElementById('user-menu-button');
-        const userMenu = document.getElementById('user-menu');
-        document.getElementById('sign-out-btn').onclick = () => auth.signOut();
+          });
 
-        // Toggle the menu when the profile picture is clicked
-        userMenuButton.addEventListener('click', () => {
-            userMenu.classList.toggle('hidden');
-        });
+          // --- DROPDOWN MENU LOGIC ---
+          const userMenuButton = document.getElementById('user-menu-button');
+          const userMenu = document.getElementById('user-menu');
+          const signOutBtn = document.getElementById('sign-out-btn');
 
-        // Close the menu if the user clicks anywhere outside of it
-        window.addEventListener('click', (event) => {
-            if (!userMenu.classList.contains('hidden')) {
-                // Check if the click was outside the button AND outside the menu
-                if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
-                    userMenu.classList.add('hidden');
-                }
-            }
-        });
-        signOutBtn.onclick = () => auth.signOut();
-        focusMode = new FocusMode({
-        db: db,
-        uid: auth.currentUser.uid,
-        confetti: confetti // Pass the confetti function
-        });
+          userMenuButton.addEventListener('click', () => {
+              userMenu.classList.toggle('hidden');
+          });
+          
+          // Close the menu if the user clicks anywhere outside of it
+          window.addEventListener('click', (event) => {
+              if (!userMenu.classList.contains('hidden')) {
+                  if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                      userMenu.classList.add('hidden');
+                  }
+              }
+          });
 
-        document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
-        document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
-
-        mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
-        navDashboard.onclick = () => navigate('dashboard');
-        navSkills.onclick = () => navigate('skills');
-        document.getElementById('nav-insights').onclick = () => navigate('insights');
-
-
-        navigate('dashboard');
-        add3DTiltEffect();
+          signOutBtn.onclick = () => auth.signOut();
+          
+          focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
+          document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
+          document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
+          mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
+          navDashboard.onclick = () => navigate('dashboard');
+          navSkills.onclick = () => navigate('skills');
+          document.getElementById('nav-insights').onclick = () => navigate('insights');
+          
+          navigate('dashboard');
+          add3DTiltEffect();
       }
 
       function attachDataListeners(tasksCollection, skillsCollection) {
@@ -876,7 +869,7 @@ class FocusMode {
             }
         }
 
-        // --- NEW LOGIC for sub-task completion and confetti ---
+        // for sub-task completion and confetti ---
         else if (e.target.matches('[data-subtask-index]')) {
           const index = parseInt(e.target.dataset.subtaskIndex);
 
