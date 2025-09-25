@@ -81,6 +81,22 @@
 
       .completed { text-decoration: line-through; opacity: 0.6; }
       .star-rating svg { cursor: pointer; }
+
+    @keyframes pulse {
+      50% {
+        opacity: 0.5;
+      }
+    }
+    .skeleton-card {
+      background-color: rgba(55, 65, 81, 0.5); /* A dimmer version of bg-gray-700 */
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    .skeleton {
+      background-color: rgba(75, 85, 99, 0.8); /* A dimmer version of bg-gray-600 */
+      border-radius: 0.25rem;
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
       /* Focus Mode Styles */
     .focus-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
     .focus-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
@@ -215,7 +231,7 @@
       // =================================================================================
       // SECTION 2: GLOBAL STATE & UI ELEMENTS
       // =================================================================================
-      let appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {} };
+      let appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {}, isLoading: true };
       let focusMode = null;
       const motivationalQuotes = [
         "The best way to predict the future is to create it.",
@@ -238,6 +254,7 @@
 
         if (user) {
           // --- USER IS LOGGED IN ---
+          appState.isLoading = true;
           userInfo.classList.remove('hidden');
           userInfo.classList.add('flex');
           signInBtn.classList.add('hidden');
@@ -328,6 +345,9 @@
         
         tasksCollection.onSnapshot(snapshot => {
           appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          if (appState.isLoading) {
+              appState.isLoading = false;
+          }
           render();
         });
 
@@ -940,6 +960,20 @@ class FocusMode {
         document.getElementById('nav-insights').classList.toggle('text-white', view === 'insights');
         render();
       }
+      function renderSkeletons() {
+          mainContent.innerHTML = `
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  ${Array(6).fill('').map(() => `
+                      <div class="col-span-1 bg-gray-800 rounded-lg p-4">
+                          <div class="skeleton-card">
+                              <div class="skeleton" style="height: 20px; width: 75%; margin-bottom: 1rem;"></div>
+                              <div class="skeleton" style="height: 14px; width: 50%;"></div>
+                          </div>
+                      </div>
+                  `).join('')}
+              </div>
+          `;
+      }
 
 function createShatterEffect(cardElement) {
     const rect = cardElement.getBoundingClientRect();
@@ -1036,9 +1070,14 @@ function add3DTiltEffect() {
       }
 
       function renderDashboard() {
+        
     // Clear existing timers first
     cleanupTimers();
-    
+        // If the app is in a loading state, show skeletons and stop.
+        if (appState.isLoading) {
+            renderSkeletons();
+            return;
+        }
     // Render main content
     mainContent.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
