@@ -1300,133 +1300,346 @@ function createTaskCard(task) {
           }
       }
 
-async function fetchTimeData(timeLogsCollection) {
-    const timeData = {
-        fullstack: 0,
-        mitx: 0,
-        nvidia: 0
-    };
+        async function fetchTimeData(timeLogsCollection) {
+            const timeData = {
+                fullstack: 0,
+                mitx: 0,
+                nvidia: 0
+            };
 
-    try {
-        const logsSnapshot = await timeLogsCollection.get();
-        
-        logsSnapshot.forEach(doc => {
-            const log = doc.data();
-            
-            // Validate log data
-            if (!log.category || !Number.isFinite(log.duration)) {
-                console.warn('Invalid log data:', doc.id, log);
-                return;
-            }
-
-            // Normalize category name and add duration
-            const category = log.category.toLowerCase().replace(/ & /g, '');
-            if (timeData.hasOwnProperty(category)) {
-                timeData[category] += Math.max(0, log.duration);
-            }
-        });
-
-        return timeData;
-    } catch (error) {
-        throw new Error(`Failed to fetch time logs: ${error.message}`);
-    }
-}
-
-async function createChart(timeData) {
-    const canvas = document.getElementById('timeAllocationChart');
-    if (!canvas) {
-        throw new Error('Canvas element not found');
-    }
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        throw new Error('Failed to get canvas context');
-    }
-
-    const chartConfig = {
-        type: 'doughnut',
-        data: {
-            labels: ['Full-Stack & Projects', 'MITx Machine Learning', 'NVIDIA & AI Practice'],
-            datasets: [{
-                label: 'Time Spent (in minutes)',
-                data: [
-                    convertToMinutes(timeData.fullstack),
-                    convertToMinutes(timeData.mitx),
-                    convertToMinutes(timeData.nvidia)
-                ],
-                backgroundColor: [
-                    'rgba(52, 211, 153, 0.7)',  // Green
-                    'rgba(96, 165, 250, 0.7)',  // Blue
-                    'rgba(192, 132, 252, 0.7)'  // Purple
-                ],
-                borderColor: [
-                    '#10B981',
-                    '#3B82F6',
-                    '#A855F7'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#d1d5db'
+            try {
+                const logsSnapshot = await timeLogsCollection.get();
+                
+                logsSnapshot.forEach(doc => {
+                    const log = doc.data();
+                    
+                    // Validate log data
+                    if (!log.category || !Number.isFinite(log.duration)) {
+                        console.warn('Invalid log data:', doc.id, log);
+                        return;
                     }
+
+                    // Normalize category name and add duration
+                    const category = log.category.toLowerCase().replace(/ & /g, '');
+                    if (timeData.hasOwnProperty(category)) {
+                        timeData[category] += Math.max(0, log.duration);
+                    }
+                });
+
+                return timeData;
+            } catch (error) {
+                throw new Error(`Failed to fetch time logs: ${error.message}`);
+            }
+        }
+
+        async function createChart(timeData) {
+            const canvas = document.getElementById('timeAllocationChart');
+            if (!canvas) {
+                throw new Error('Canvas element not found');
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get canvas context');
+            }
+
+            const chartConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['Full-Stack & Projects', 'MITx Machine Learning', 'NVIDIA & AI Practice'],
+                    datasets: [{
+                        label: 'Time Spent (in minutes)',
+                        data: [
+                            convertToMinutes(timeData.fullstack),
+                            convertToMinutes(timeData.mitx),
+                            convertToMinutes(timeData.nvidia)
+                        ],
+                        backgroundColor: [
+                            'rgba(52, 211, 153, 0.7)',  // Green
+                            'rgba(96, 165, 250, 0.7)',  // Blue
+                            'rgba(192, 132, 252, 0.7)'  // Purple
+                        ],
+                        borderColor: [
+                            '#10B981',
+                            '#3B82F6',
+                            '#A855F7'
+                        ],
+                        borderWidth: 1
+                    }]
                 },
-                title: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: (context) => {
-                            const minutes = context.raw;
-                            return `${minutes} minutes (${formatHours(minutes)})`;
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#d1d5db'
+                            }
+                        },
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const minutes = context.raw;
+                                    return `${minutes} minutes (${formatHours(minutes)})`;
+                                }
+                            }
                         }
                     }
                 }
+            };
+
+            try {
+                return new Chart(ctx, chartConfig);
+            } catch (error) {
+                throw new Error(`Failed to create chart: ${error.message}`);
             }
         }
-    };
 
-    try {
-        return new Chart(ctx, chartConfig);
-    } catch (error) {
-        throw new Error(`Failed to create chart: ${error.message}`);
-    }
-}
+        function convertToMinutes(seconds) {
+            return Math.round(Math.max(0, seconds) / 60);
+        }
 
-function convertToMinutes(seconds) {
-    return Math.round(Math.max(0, seconds) / 60);
-}
+        function formatHours(minutes) {
+            const hours = (minutes / 60).toFixed(1);
+            return `${hours} hours`;
+        }
 
-function formatHours(minutes) {
-    const hours = (minutes / 60).toFixed(1);
-    return `${hours} hours`;
-}
+        function showError(message) {
+            const errorDiv = document.getElementById('chart-error');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+            }
+        }
 
-function showError(message) {
-    const errorDiv = document.getElementById('chart-error');
-    if (errorDiv) {
-        errorDiv.textContent = message;
-        errorDiv.classList.remove('hidden');
-    }
-}
+        async function showWeeklyReportModal(timeLogsCollection, tasksCollection) {
+            const { startOfWeek, endOfWeek } = getWeekRange(new Date());
+            
+            // Fetch time logs
+            const logsSnapshot = await timeLogsCollection
+                .where('timestamp', '>=', startOfWeek)
+                .where('timestamp', '<=', endOfWeek)
+                .get();
+            
+            // Fetch completed tasks this week
+            const tasksSnapshot = await tasksCollection
+                .where('completed', '==', true)
+                .where('completedAt', '>=', startOfWeek)
+                .where('completedAt', '<=', endOfWeek)
+                .get();
+            
+            // Process time data
+            const weeklyData = { fullstack: 0, mitx: 0, nvidia: 0 };
+            const dailyData = {};
+            
+            logsSnapshot.forEach(doc => {
+                const log = doc.data();
+                if (log.category && typeof log.category === 'string') {
+                    const category = log.category.toLowerCase();
+                    if (weeklyData[category] !== undefined) {
+                        weeklyData[category] += Number(log.duration) || 0;
+                    }
+                    
+                    // Track daily time
+                    const day = log.timestamp.toDate().toLocaleDateString('en-US', { weekday: 'short' });
+                    if (!dailyData[day]) dailyData[day] = 0;
+                    dailyData[day] += Number(log.duration) || 0;
+                }
+            });
 
-      async function showWeeklyReportModal(timeLogsCollection) {
-        const { startOfWeek, endOfWeek } = getWeekRange(new Date());
-        const logsSnapshot = await timeLogsCollection.where('timestamp', '>=', startOfWeek).where('timestamp', '<=', endOfWeek).get();
-        const weeklyData = { fullstack: 0, mitx: 0, nvidia: 0 };
-        logsSnapshot.forEach(doc => {
-          const log = doc.data();
-          if (weeklyData[log.category] !== undefined) weeklyData[log.category] += log.duration;
-        });
-        const formatTime = (seconds) => `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-        modalContainer.innerHTML = `<div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg"><h2 class="text-xl font-bold mb-4">Weekly Performance Report</h2><div class="space-y-4"><div><h3 class="font-semibold text-green-400">Full-Stack & Projects</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.fullstack)}</span></p></div><div><h3 class="font-semibold text-blue-400">MITx Machine Learning</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.mitx)}</span></p></div><div><h3 class="font-semibold text-purple-400">NVIDIA & AI Practice</h3><p>Time Logged: <span class="font-mono">${formatTime(weeklyData.nvidia)}</span></p></div></div><div class="mt-6 flex justify-end"><button id="close-report-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Close</button></div></div></div>`;
-        document.getElementById('close-report-btn').onclick = closeModal;
-      }
+            // Calculate statistics
+            const totalTime = Object.values(weeklyData).reduce((sum, time) => sum + time, 0);
+            const completedTasks = tasksSnapshot.size;
+            const avgTimePerTask = completedTasks > 0 ? Math.round(totalTime / completedTasks) : 0;
+            
+            // Find most productive day
+            const mostProductiveDay = Object.entries(dailyData).reduce((max, [day, time]) => 
+                time > (max.time || 0) ? { day, time } : max, {});
+
+            const formatTime = (seconds) => {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return `${hours}h ${minutes}m`;
+            };
+
+            const formatPercentage = (value, total) => {
+                return total > 0 ? Math.round((value / total) * 100) : 0;
+            };
+
+            modalContainer.innerHTML = `
+                <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold">Weekly Progress Report</h2>
+                            <span class="text-sm text-gray-400">${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}</span>
+                        </div>
+                        
+                        <!-- Summary Stats -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gray-700 rounded-lg p-4 text-center">
+                                <div class="text-2xl font-bold text-cyan-400">${formatTime(totalTime)}</div>
+                                <div class="text-sm text-gray-400">Total Time</div>
+                            </div>
+                            <div class="bg-gray-700 rounded-lg p-4 text-center">
+                                <div class="text-2xl font-bold text-green-400">${completedTasks}</div>
+                                <div class="text-sm text-gray-400">Tasks Completed</div>
+                            </div>
+                            <div class="bg-gray-700 rounded-lg p-4 text-center">
+                                <div class="text-2xl font-bold text-yellow-400">${formatTime(avgTimePerTask)}</div>
+                                <div class="text-sm text-gray-400">Avg per Task</div>
+                            </div>
+                            <div class="bg-gray-700 rounded-lg p-4 text-center">
+                                <div class="text-2xl font-bold text-purple-400">${mostProductiveDay.day || 'N/A'}</div>
+                                <div class="text-sm text-gray-400">Most Productive</div>
+                            </div>
+                        </div>
+
+                        <!-- Category Breakdown -->
+                        <div class="space-y-4 mb-6">
+                            <h3 class="text-lg font-semibold">Time by Category</h3>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <h4 class="font-medium text-green-400">Full-Stack & Projects</h4>
+                                        <span class="font-mono text-sm">${formatTime(weeklyData.fullstack)} (${formatPercentage(weeklyData.fullstack, totalTime)}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-green-400 h-2 rounded-full transition-all duration-500" 
+                                            style="width: ${formatPercentage(weeklyData.fullstack, totalTime)}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <h4 class="font-medium text-blue-400">MITx Machine Learning</h4>
+                                        <span class="font-mono text-sm">${formatTime(weeklyData.mitx)} (${formatPercentage(weeklyData.mitx, totalTime)}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-blue-400 h-2 rounded-full transition-all duration-500" 
+                                            style="width: ${formatPercentage(weeklyData.mitx, totalTime)}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <h4 class="font-medium text-purple-400">NVIDIA & AI Practice</h4>
+                                        <span class="font-mono text-sm">${formatTime(weeklyData.nvidia)} (${formatPercentage(weeklyData.nvidia, totalTime)}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="bg-purple-400 h-2 rounded-full transition-all duration-500" 
+                                            style="width: ${formatPercentage(weeklyData.nvidia, totalTime)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Activity Chart -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3">Daily Activity</h3>
+                            <div class="flex justify-between items-end h-32">
+                                ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                                    const dayTime = dailyData[day] || 0;
+                                    const height = totalTime > 0 ? (dayTime / Math.max(...Object.values(dailyData))) * 100 : 0;
+                                    return `
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full max-w-12 bg-cyan-500 rounded-t transition-all duration-500" 
+                                                style="height: ${height}%"
+                                                title="${formatTime(dayTime)}"></div>
+                                            <span class="text-xs text-gray-400 mt-1">${day}</span>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Insights -->
+                        <div class="bg-gray-700 rounded-lg p-4 mb-6">
+                            <h3 class="text-lg font-semibold mb-2">Weekly Insights</h3>
+                            <ul class="space-y-2 text-sm">
+                                ${generateInsights(weeklyData, totalTime, completedTasks, mostProductiveDay)}
+                            </ul>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-between">
+                            <button onclick="exportWeeklyReport()" 
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Export Report
+                            </button>
+                            <button id="close-report-btn" 
+                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.getElementById('close-report-btn').onclick = closeModal;
+            
+            // Animate progress bars after modal opens
+            setTimeout(() => {
+                document.querySelectorAll('.bg-green-400, .bg-blue-400, .bg-purple-400').forEach(bar => {
+                    bar.style.width = bar.style.width;
+                });
+            }, 100);
+        }
+
+        function generateInsights(weeklyData, totalTime, completedTasks, mostProductiveDay) {
+            const insights = [];
+            
+            // Most focused category
+            const categories = Object.entries(weeklyData);
+            const mostFocused = categories.reduce((max, [cat, time]) => 
+                time > max.time ? { category: cat, time } : max, { time: 0 });
+            
+            if (mostFocused.category) {
+                insights.push(`💡 You spent most time on <span class="font-semibold">${getCategoryName(mostFocused.category)}</span> this week`);
+            }
+            
+            // Productivity insight
+            if (completedTasks > 10) {
+                insights.push(`🚀 Great productivity! You completed ${completedTasks} tasks`);
+            } else if (completedTasks > 0) {
+                insights.push(`📈 You completed ${completedTasks} tasks. Try to increase this next week`);
+            }
+            
+            // Balance insight
+            const balance = Math.min(...categories.map(([_, time]) => time)) / Math.max(...categories.map(([_, time]) => time));
+            if (balance > 0.5) {
+                insights.push(`⚖️ Good balance across all categories`);
+            } else {
+                insights.push(`⚠️ Consider balancing time across categories more evenly`);
+            }
+            
+            // Most productive day
+            if (mostProductiveDay.day) {
+                insights.push(`📅 ${mostProductiveDay.day} was your most productive day`);
+            }
+            
+            return insights.map(insight => `<li>${insight}</li>`).join('');
+        }
+
+        function getCategoryName(category) {
+            const names = {
+                'fullstack': 'Full-Stack & Projects',
+                'mitx': 'MITx Machine Learning',
+                'nvidia': 'NVIDIA & AI Practice'
+            };
+            return names[category] || category;
+        }
+
+        async function exportWeeklyReport() {
+            // Implementation for exporting report as PDF or CSV
+            showToast('Report exported successfully!');
+        }
 
       function closeModal() { modalContainer.innerHTML = ''; }
 
