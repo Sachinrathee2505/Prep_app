@@ -324,7 +324,7 @@
           
           focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
           document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
-          document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection);
+          document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection, tasksCollection);
           mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
           navDashboard.onclick = () => navigate('dashboard');
           navSkills.onclick = () => navigate('skills');
@@ -1707,4 +1707,5 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
