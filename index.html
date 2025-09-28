@@ -146,6 +146,18 @@
     .color-level-2 { background-color: #006d32; }
     .color-level-3 { background-color: #26a641; }
     .color-level-4 { background-color: #39d353; } /* Darkest Green */
+
+    .task-fade-out {
+    transition: all 0.4s ease-out;
+    opacity: 0;
+    transform: scale(0.95);
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    overflow: hidden;
+    }
   </style>
 </head>
 
@@ -962,14 +974,26 @@ class FocusMode {
           await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
         }
 
-
         else if (e.target.closest('.delete-btn')) {
-            if (confirm('Are you sure you want to delete this task?')) {
-            // Call the shatter effect on the card element FIRST
-            createShatterEffect(card);
-            // Then, delete the data from Firestore
-            await tasksCollection.doc(taskId).delete();
-            }
+            // Animate the card fading out
+            card.classList.add('task-fade-out');
+
+            // Show the toast with the Undo option
+            showUndoToast("Task deleted.", () => {
+                // This is the UNDO logic
+                // It runs only if the user clicks "Undo"
+                card.classList.remove('task-fade-out');
+            });
+
+            // Set a timer. If Undo is NOT clicked, delete from Firestore.
+            setTimeout(() => {
+                // Check if the card still has the fade-out class.
+                // If it does, it means Undo was NOT clicked.
+                if (card.classList.contains('task-fade-out')) {
+                    createShatterEffect(card);
+                    tasksCollection.doc(taskId).delete();
+                }
+            }, 7000); 
         }
         else if (e.target.closest('.timer-btn')) {
           const isRunning = !task.timerRunning;
@@ -1706,6 +1730,41 @@ function createTaskCard(task) {
             }
             
             return insights.map(insight => `<li>${insight}</li>`).join('');
+        }
+
+        function showUndoToast(message, onUndo) {
+            // Remove any existing toasts
+            const toastContainer = document.getElementById('toast-container');
+            toastContainer.innerHTML = '';
+
+            const toast = document.createElement('div');
+            toast.className = 'bg-gray-700 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between animate-toast-in';
+
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            toast.appendChild(messageSpan);
+
+            const undoButton = document.createElement('button');
+            undoButton.className = 'ml-4 font-bold text-cyan-400 hover:text-cyan-300';
+            undoButton.textContent = 'Undo';
+            toast.appendChild(undoButton);
+
+            // This is the timer for the deletion
+            const timeoutId = setTimeout(() => {
+                // If the timer finishes, we don't need the onUndo function anymore
+                // The task will be permanently deleted by the calling function.
+                toast.classList.remove('animate-toast-in');
+                toast.classList.add('animate-toast-out');
+                setTimeout(() => toast.remove(), 500);
+            }, 7000); // 7 seconds to undo
+
+            undoButton.onclick = () => {
+                clearTimeout(timeoutId); // Cancel the permanent deletion
+                onUndo(); // Run the undo logic
+                toast.remove(); // Remove the toast immediately
+            };
+
+            toastContainer.appendChild(toast);
         }
 
         function getCategoryName(category) {
