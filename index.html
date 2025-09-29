@@ -390,8 +390,11 @@
       // =================================================================================
       function initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection) {
           attachDataListeners(tasksCollection, skillsCollection);
+          const streakTracker = new StreakTracker(user.uid);
+          achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
+          focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
           const streakRef = db.collection('streaks').doc(user.uid);
-          streakRef.onSnapshot(doc => {
+          streakTracker.streakRef.onSnapshot(doc => {
               const streakData = doc.data() || { current: 0 };
               const streakDisplay = document.getElementById('streak-display');
               const streakCount = document.getElementById('streak-count');
@@ -403,14 +406,7 @@
                   streakDisplay.classList.add('hidden');
               }
           });
-          
-            achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
-            focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
 
-            document.getElementById('achievements-btn').onclick = () => {
-                document.getElementById('user-menu').classList.add('hidden');
-                achievementSystem.renderAchievementsPage();
-            };
 
           // --- DROPDOWN MENU LOGIC ---
           const userMenuButton = document.getElementById('user-menu-button');
@@ -429,6 +425,10 @@
                   }
               }
           });
+                document.getElementById('achievements-btn').onclick = () => {
+                document.getElementById('user-menu').classList.add('hidden');
+                achievementSystem.renderAchievementsPage();
+            };
 
           signOutBtn.onclick = () => auth.signOut();
           
@@ -2138,4 +2138,5 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
