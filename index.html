@@ -79,8 +79,13 @@
       opacity: 1;
     }
 
-      .completed { text-decoration: line-through; opacity: 0.6; }
-      .star-rating svg { cursor: pointer; }
+    .completed { 
+        text-decoration: line-through; 
+        opacity: 0.6; 
+    }
+    .star-rating svg { 
+        cursor: pointer; 
+    }
 
     @keyframes pulse {
       50% {
@@ -98,37 +103,218 @@
       animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
       /* Focus Mode Styles */
-    .focus-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-    .focus-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
-    .focus-container { width: 90%; max-width: 600px; text-align: center; position: relative; }
-    .focus-close { position: absolute; top: -40px; right: 0; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-    .focus-close:hover { background: rgba(255, 255, 255, 0.2); color: white; transform: scale(1.1); }
-    .focus-content { animation: focusSlideIn 0.4s ease-out; }
-    @keyframes focusSlideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .focus-task-name { font-size: 2rem; font-weight: 600; color: white; margin: 0 0 3rem; opacity: 0.9; }
-    .focus-timer-group { margin-bottom: 3rem; }
-    .focus-timer { font-size: 6rem; font-weight: 200; color: white; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-bottom: 1rem; }
-    .focus-progress { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; }
-    .focus-progress-bar { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 1s linear; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
-    .focus-status { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; }
-    .focus-controls { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; }
-    .focus-btn { padding: 0.75rem 2rem; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
-    .focus-btn-primary { background: #10b981; color: white; }
-    .focus-btn-primary:hover { background: #059669; transform: translateY(-1px); }
-    .focus-btn-secondary { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); }
-    .focus-btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
-    .focus-presets h2 { color: white; font-size: 1.5rem; margin-bottom: 2rem; font-weight: 500; }
-    .preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
-    .preset-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem 1rem; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
-    .preset-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
-    .preset-time { font-size: 1.5rem; font-weight: 600; color: white; }
-    .preset-label { font-size: 0.875rem; color: rgba(255, 255, 255, 0.6); }
-    .break-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px); z-index: 10001; display: flex; align-items: center; justify-content: center; text-align: center; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-    .break-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
-    .break-content h2 { color: white; font-size: 2rem; margin-bottom: 2rem; }
-    .break-timer { font-size: 4rem; color: #60a5fa; font-weight: 200; margin-bottom: 2rem; font-variant-numeric: tabular-nums; }
-    @media (prefers-reduced-motion: reduce) { .focus-overlay, .focus-content, .focus-btn, .preset-btn { animation: none; transition: none; } .focus-progress-bar { transition: none; } }
-    @media (max-width: 640px) { .focus-timer { font-size: 4rem; } .focus-task-name { font-size: 1.5rem; } .preset-grid { grid-template-columns: repeat(2, 1fr); } }
+    .focus-overlay { position: fixed; 
+        inset: 0; 
+        background: rgba(0, 0, 0, 0.95); 
+        backdrop-filter: blur(10px); 
+        z-index: 10000; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        opacity: 0; 
+        transition: opacity 0.3s ease; 
+        pointer-events: none; 
+    }
+    .focus-overlay:not(.hidden) { 
+        opacity: 1; 
+        pointer-events: auto; 
+    }
+    .focus-container { 
+        width: 90%; 
+        max-width: 600px; 
+        text-align: center;
+        position: relative; 
+    }
+    .focus-close { 
+        position: absolute; 
+        top: -40px; 
+        right: 0; 
+        background: rgba(255, 255, 255, 0.1); 
+        border: 1px solid rgba(255, 255, 255, 0.2); 
+        color: rgba(255, 255, 255, 0.6); 
+        width: 40px; 
+        height: 40px; 
+        border-radius: 50%; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        cursor: pointer; 
+        transition: all 0.2s; 
+    }
+    .focus-close:hover { 
+        background: rgba(255, 255, 255, 0.2); 
+        color: white; 
+        transform: scale(1.1); 
+    }
+
+    .focus-content { 
+        animation: focusSlideIn 0.4s ease-out; 
+    }
+
+    @keyframes focusSlideIn { 
+        from { 
+            transform: translateY(20px); opacity: 0; }
+        to 
+        { 
+            transform: translateY(0); opacity: 1; } 
+    }
+
+    .focus-task-name { 
+        font-size: 2rem; 
+        font-weight: 600; 
+        color: white; 
+        margin: 0 0 3rem; 
+        opacity: 0.9; 
+    }
+    .focus-timer-group { 
+        margin-bottom: 3rem; 
+    }
+    .focus-timer { 
+        font-size: 6rem; 
+        font-weight: 200; 
+        color: white; 
+        font-variant-numeric: tabular-nums; 
+        letter-spacing: -0.02em; 
+        margin-bottom: 1rem; 
+    }
+    .focus-progress {
+        width: 100%; 
+        height: 4px; 
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px; 
+        overflow: hidden; 
+        margin-bottom: 1rem; 
+    }
+    .focus-progress-bar { 
+        height: 100%; 
+        background: linear-gradient(90deg, #10b981, #34d399); 
+        width: 0%; 
+        transition: width 1s linear; 
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); 
+    }
+    .focus-status { 
+        color: rgba(255, 255, 255, 0.6); 
+        font-size: 0.875rem; 
+        text-transform: uppercase; 
+        letter-spacing: 0.1em; 
+    }
+    .focus-controls { 
+        display: flex; 
+        gap: 1rem; 
+        justify-content: center; 
+        margin-bottom: 2rem; 
+    }
+    .focus-btn { 
+        padding: 0.75rem 2rem; 
+        border-radius: 8px; 
+        font-weight: 500; 
+        border: none; 
+        cursor: pointer; 
+        transition: all 0.2s; 
+        font-size: 1rem; 
+    }
+    .focus-btn-primary { 
+        background: #10b981; 
+        color: white; 
+    }
+    .focus-btn-primary:hover { 
+        background: #059669; 
+        transform: translateY(-1px); 
+    }
+    .focus-btn-secondary { 
+        background: rgba(255, 255, 255, 0.1); 
+        color: rgba(255, 255, 255, 0.8); 
+        border: 1px solid rgba(255, 255, 255, 0.2); 
+    }
+    .focus-btn-secondary:hover { 
+        background: rgba(255, 255, 255, 0.15); 
+    }
+    .focus-presets h2 { 
+        color: white; 
+        font-size: 1.5rem; 
+        margin-bottom: 2rem; 
+        font-weight: 500; 
+    }
+    .preset-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+        gap: 1rem; 
+    }
+    .preset-btn { 
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+        border-radius: 12px; 
+        padding: 1.5rem 1rem; 
+        cursor: pointer;
+        transition: all 0.2s; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 0.5rem; 
+    }
+    .preset-btn:hover { 
+        background: rgba(255, 255, 255, 0.1); 
+        border-color: rgba(255, 255, 255, 0.3); 
+        transform: translateY(-2px); 
+    }
+    .preset-time { 
+        font-size: 1.5rem; 
+        font-weight: 600; 
+        color: white; 
+    }
+    .preset-label { 
+        font-size: 0.875rem; 
+        color: rgba(255, 255, 255, 0.6); 
+    }
+    .break-overlay { 
+        position: fixed; 
+        inset: 0; 
+        background: rgba(0, 0, 0, 0.9); 
+        backdrop-filter: blur(10px); 
+        z-index: 10001; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        text-align: center; 
+        opacity: 0; 
+        transition: opacity 0.3s ease; 
+        pointer-events: none; 
+    }
+    .break-overlay:not(.hidden) { 
+        opacity: 1; 
+        pointer-events: auto; 
+    }
+    .break-content h2 { 
+        color: white; 
+        font-size: 2rem; 
+        margin-bottom: 2rem; 
+    }
+    .break-timer { 
+        font-size: 4rem; 
+        color: #60a5fa; 
+        font-weight: 200; 
+        margin-bottom: 2rem; 
+        font-variant-numeric: tabular-nums; 
+    }
+    @media (prefers-reduced-motion: reduce) { 
+        .focus-overlay, .focus-content, .focus-btn, .preset-btn { 
+            animation: none; 
+            transition: none; 
+        } 
+        .focus-progress-bar { 
+            transition: none; 
+        } 
+    }
+    @media (max-width: 640px) { 
+        .focus-timer { 
+            font-size: 4rem; 
+        } 
+        .focus-task-name { 
+            font-size: 1.5rem; 
+        } 
+        .preset-grid { 
+            grid-template-columns: repeat(2, 1fr); 
+        } 
+    }
 
     /* --- Achievement System Styles --- */
     .achievement-popup { 
@@ -138,10 +324,13 @@
          transform:
          translateX(400px);
          transition: transform 0.5s ease-out;
-         z-index: 10000; }
+         z-index: 10000; 
+    }
     .achievement-popup.show { 
-        transform: translateX(0); }
-    .achievement-content { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
+        transform: translateX(0); 
+    }
+    .achievement-content { 
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
         border-radius: 12px; 
         padding: 1rem 1.25rem; 
         display: flex; 
@@ -149,49 +338,131 @@
         gap: 1rem; 
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); 
         border: 1px solid; 
-        min-width: 350px; }
-    .achievement-content.common { border-color: #64748b; }
-    .achievement-content.uncommon { border-color: #34d399; }
-    .achievement-content.rare { border-color: #60a5fa; }
-    .achievement-content.legendary { border-color: #facc15; }
-    .achievement-icon { font-size: 2.5rem; }
-    .achievement-details h3 { font-size: 0.875rem; 
+        min-width: 350px; 
+    }
+    .achievement-content.common { 
+        border-color: #64748b; 
+    }
+    .achievement-content.uncommon { 
+        border-color: #34d399; 
+    }
+    .achievement-content.rare {
+         border-color: #60a5fa; 
+    }
+    .achievement-content.legendary { 
+        border-color: #facc15; 
+    }
+    .achievement-icon { 
+        font-size: 2.5rem; 
+    }
+    .achievement-details h3 { 
+        font-size: 0.875rem; 
         color: #9ca3af; 
-        text-transform: uppercase; }
-    .achievement-details h4 { font-size: 1.125rem; 
+        text-transform: uppercase; 
+    }
+    .achievement-details h4 { 
+        font-size: 1.125rem; 
         font-weight: 600; 
-        color: #fff; }
+        color: #fff; 
+    }
     .achievement-details p { 
         font-size: 0.875rem; 
-        color: #d1d5db; }
-    .achievement-points { font-size: 0.875rem; 
+        color: #d1d5db; 
+    }
+    .achievement-points { 
+        font-size: 0.875rem; 
         font-weight: 600; 
         color: #facc15; 
-        margin-top: 4px; }
-    .achievements-page { padding: 1rem; }
-    .achievements-header { text-align: center; margin-bottom: 2rem; }
-    .stats-bar { display: flex; justify-content: center; gap: 1rem; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 12px; max-width: 500px; margin: 1rem auto 0; }
-    .stat { flex: 1; }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: #fff; }
-    .stat-label { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; }
-    .achievement-category { margin-bottom: 2rem; }
-    .category-title { font-size: 1.5rem; font-weight: 600; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
-    .achievements-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
-    .achievement-card { background: #374151; border-radius: 8px; padding: 1rem; text-align: center; position: relative; border: 1px solid #4b5563; }
-    .achievement-card.unlocked { border-color: #a78bfa; }
-    .achievement-card .achievement-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-    .achievement-card .achievement-name { font-weight: 600; color: #fff; }
-    .achievement-card .achievement-description { font-size: 0.875rem; color: #d1d5db; min-height: 40px; }
-    .achievement-card .achievement-footer { display: flex; 
+        margin-top: 4px; 
+    }
+    .achievements-page { 
+        padding: 1rem; 
+    }
+    .achievements-header { 
+        text-align: center; 
+        margin-bottom: 2rem; 
+    }
+    .stats-bar { 
+        display: flex; 
+        justify-content: center; 
+        gap: 1rem; 
+        background: rgba(255,255,255,0.05); 
+        padding: 1rem; 
+        border-radius: 12px; 
+        max-width: 500px;
+        margin: 1rem auto 0; 
+    }
+    .stat { 
+        flex: 1; 
+    }
+    .stat-value { 
+        font-size: 1.5rem; 
+        font-weight: 700; 
+        color: #fff; 
+    }
+    .stat-label { 
+        font-size: 0.75rem; 
+        text-transform: uppercase; 
+        color: #9ca3af; 
+    }
+    .achievement-category { 
+        margin-bottom: 2rem; 
+    }
+    .category-title { 
+        font-size: 1.5rem; 
+        font-weight: 600; 
+        color: #fff; 
+        margin-bottom: 1rem;
+        display: flex; 
+        align-items: center;
+        gap: 0.5rem; }
+    .achievements-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+        gap: 1rem; 
+    }
+    .achievement-card { 
+        background: #374151; 
+        border-radius: 8px; 
+        padding: 1rem; 
+        text-align: center; 
+        position: relative; 
+        border: 1px solid #4b5563; 
+    }
+    .achievement-card.unlocked { 
+        border-color: #a78bfa; 
+    }
+    .achievement-card .achievement-icon { 
+        font-size: 3rem; 
+        margin-bottom: 0.5rem; 
+    }
+    .achievement-card .achievement-name { 
+        font-weight: 600; 
+        color: #fff; 
+    }
+    .achievement-card .achievement-description { 
+        font-size: 0.875rem; 
+        color: #d1d5db; 
+        min-height: 40px; 
+    }
+    .achievement-card .achievement-footer { 
+        display: flex; 
         justify-content: space-between; 
         font-size: 0.75rem; 
         color: #9ca3af; 
         border-top: 1px solid #4b5563; 
         padding-top: 0.5rem; 
-        margin-top: 0.5rem; }
-    .achievement-card .achievement-points { color: #facc15; font-weight: 600; }
-    .achievement-card .achievement-rarity { text-transform: capitalize; }
-    .achievement-card.locked .locked-overlay { position: absolute; 
+        margin-top: 0.5rem; 
+    }
+    .achievement-card .achievement-points { 
+        color: #facc15; 
+        font-weight: 600; 
+    }
+    .achievement-card .achievement-rarity { 
+        text-transform: capitalize; 
+    }
+    .achievement-card.locked .locked-overlay { 
+        position: absolute; 
         inset: 0; 
         background: rgba(0,0,0,0.7); 
         backdrop-filter: blur(4px); 
@@ -200,7 +471,8 @@
         justify-content: center; 
         font-size: 3rem; 
         color: #fff; 
-        border-radius: 8px; }
+        border-radius: 8px; 
+    }
     .activity-heatmap {
         display: grid;
         grid-template-rows: repeat(7, 1fr); /* 7 days a week */
@@ -213,10 +485,18 @@
         background-color: rgba(255, 255, 255, 0.08); /* Default empty color */
         border-radius: 3px;
     }
-    .color-level-1 { background-color: #0e4429; } /* Lightest Green */
-    .color-level-2 { background-color: #006d32; }
-    .color-level-3 { background-color: #26a641; }
-    .color-level-4 { background-color: #39d353; } /* Darkest Green */
+    .color-level-1 { 
+        background-color: #0e4429; 
+    } /* Lightest Green */
+    .color-level-2 { 
+        background-color: #006d32; 
+    }
+    .color-level-3 { 
+        background-color: #26a641; 
+    }
+    .color-level-4 { 
+        background-color: #39d353; 
+    } /* Darkest Green */
 
     .task-fade-out {
     transition: all 0.4s ease-out;
@@ -253,25 +533,34 @@
           </button>
 
           <div id="user-info" class="hidden items-center relative">
-              <button id="user-menu-button" type="button" class="flex text-sm bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+              <button id="user-menu-button" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu" class="flex text-sm bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
                   <span class="sr-only">Open user menu</span>
                   <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
               </button>
 
-              <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" tabindex="-1">
-                  <div class="px-4 py-3">
-                      <p class="text-sm text-white">Signed in as</p>
-                      <p id="user-name" class="text-sm font-medium text-gray-300 truncate"></p>
-                  </div>
-                  <div class="border-t border-gray-600"></div>
-                  <div id="streak-display" class="flex items-center space-x-2 px-4 py-2" title="Current Streak">
-                      <span class="text-orange-400">🔥</span>
-                      <span id="streak-count" class="text-sm font-bold text-white">0</span>
-                  </div>
-                  <div class="border-t border-gray-600"></div>
-                  <a href="#" id="achievements-btn" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" role="menuitem" tabindex="-1">My Achievements</a>
-                  <a href="#" id="sign-out-btn" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" role="menuitem" tabindex="-1">Sign out</a>
-              </div>
+                <div id="user-menu" 
+                    class="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" 
+                    role="menu" 
+                    aria-labelledby="user-menu-button">
+                    <div class="px-4 py-3">
+                        <p class="text-sm text-white">Signed in as</p>
+                        <p id="user-name" class="text-sm font-medium text-gray-300 truncate"></p>
+                    </div>
+                    <div class="border-t border-gray-600"></div>
+                    <div id="streak-display" class="flex items-center space-x-2 px-4 py-2" title="Current Streak">
+                        <span class="text-orange-400">🔥</span>
+                        <span id="streak-count" class="text-sm font-bold text-white">0</span>
+                    </div>
+                    <div class="border-t border-gray-600"></div>
+                    <a href="#" 
+                    id="achievements-btn" 
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
+                    role="menuitem">My Achievements</a>
+                    <a href="#" 
+                    id="sign-out-btn" 
+                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
+                    role="menuitem">Sign out</a>
+                </div>
           </div>
         </div>
       </nav>
@@ -325,7 +614,7 @@
               } else if (err.code == 'unimplemented') {
                   console.warn('Firestore persistence failed: Browser not supported.');
               }
-          });
+            });
       // Initialize the connection manager to handle the offline UI banner
             const auth = firebase.auth();
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -372,7 +661,8 @@
 
               initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection);
               
-          } else {
+            } 
+          else {
               // --- USER IS LOGGED OUT ---
               userInfo.classList.add('hidden');
               signInBtn.classList.remove('hidden');
@@ -382,8 +672,8 @@
               Object.values(appState.timers).forEach(clearInterval);
               mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to Level Up Hub</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
               signInBtn.onclick = () => auth.signInWithPopup(provider);
-          }
-      });
+            }
+        });
 
       // =================================================================================
       // SECTION 4: APP INITIALIZATION & DATA LISTENERS
@@ -402,10 +692,11 @@
                   streakCount.textContent = streakData.current;
                   streakDisplay.classList.remove('hidden');
                   streakDisplay.classList.add('flex');
-              } else {
+                } 
+                else {
                   streakDisplay.classList.add('hidden');
-              }
-          });
+                }
+            });
 
 
           // --- DROPDOWN MENU LOGIC ---
@@ -415,19 +706,20 @@
 
           userMenuButton.addEventListener('click', () => {
               userMenu.classList.toggle('hidden');
-          });
+            });
           
           // Close the menu if the user clicks anywhere outside of it
           window.addEventListener('click', (event) => {
               if (!userMenu.classList.contains('hidden')) {
                   if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
                       userMenu.classList.add('hidden');
-                  }
-              }
-          });
-                document.getElementById('achievements-btn').onclick = () => {
-                document.getElementById('user-menu').classList.add('hidden');
-                achievementSystem.renderAchievementsPage();
+                    }
+                }
+            });
+
+            document.getElementById('achievements-btn').onclick = () => {
+            document.getElementById('user-menu').classList.add('hidden');
+            achievementSystem.renderAchievementsPage();
             };
 
           signOutBtn.onclick = () => auth.signOut();
@@ -442,183 +734,186 @@
           
           navigate('dashboard');
           add3DTiltEffect();
-      }
+        }
 
       function attachDataListeners(tasksCollection, skillsCollection) {
         
-        tasksCollection.onSnapshot(snapshot => {
-          appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          if (appState.isLoading) {
-              appState.isLoading = false;
-          }
-          render();
-        });
-
-        skillsCollection.onSnapshot(snapshot => {
-          appState.skills = {};
-          snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
-          if (appState.currentView === 'skills') render();
-        });
-      }
-      class StreakTracker {
-    constructor(userId) {
-        this.userId = userId;
-        this.streakRef = db.collection('streaks').doc(userId);
-        this.MILESTONE_TIERS = {
-            7: '🔥 Week Warrior',
-            14: '⚡ Fortnight Fighter',
-            30: '🌟 Monthly Master',
-            60: '💫 Dedication Diamond',
-            90: '👑 Quarterly King'
-        };
-    }
-
-    normalizeDate(date) {
-        if (!date) return null;
-        const d = date.toDate ? date.toDate() : new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d;
-    }
-
-    isSameDay(date1, date2) {
-        if (!date1 || !date2) return false;
-        const d1 = this.normalizeDate(date1);
-        const d2 = this.normalizeDate(date2);
-        return d1.getTime() === d2.getTime();
-    }
-
-    isConsecutiveDay(lastDate, today) {
-        if (!lastDate || !today) return false;
-        const d1 = this.normalizeDate(lastDate);
-        const d2 = this.normalizeDate(today);
-        const diffTime = Math.abs(d2 - d1);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays === 1;
-    }
-
-    async updateStreak() {
-        try {
-            const today = new Date();
-            const streakDoc = await this.streakRef.get();
-            const data = streakDoc.data() || { 
-                current: 0, 
-                lastStudy: null,
-                bestStreak: 0,
-                milestones: [],
-                totalDays: 0
-            };
-
-            if (this.isSameDay(data.lastStudy, today)) {
-                return {
-                    status: 'unchanged',
-                    streak: data.current,
-                    message: 'Already logged today'
-                };
+            tasksCollection.onSnapshot(snapshot => {
+            appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (appState.isLoading) {
+                appState.isLoading = false;
             }
-
-            let updates = {
-                lastStudy: today,
-                totalDays: (data.totalDays || 0) + 1
-            };
-
-            if (this.isConsecutiveDay(data.lastStudy, today)) {
-                const newStreak = data.current + 1;
-                updates = {
-                    ...updates,
-                    current: newStreak,
-                    bestStreak: Math.max(newStreak, data.bestStreak || 0)
-                };
-
-                // Check for new milestone
-                const milestone = this.checkMilestone(newStreak);
-                if (milestone) {
-                    updates.milestones = firebase.firestore.FieldValue.arrayUnion({
-                        days: newStreak,
-                        achieved: today,
-                        title: milestone
-                    });
-                }
-
-                await this.streakRef.set(updates, { merge: true });
-                await this.celebrateStreak(newStreak);
-
-                return {
-                    status: 'extended',
-                    streak: newStreak,
-                    milestone,
-                    message: `Streak extended to ${newStreak} days!`
-                };
-            } else {
-                updates.current = 1;
-                await this.streakRef.set(updates, { merge: true });
-
-                return {
-                    status: 'reset',
-                    streak: 1,
-                    message: 'New streak started!'
-                };
-            }
-        } catch (error) {
-            console.error('Error updating streak:', error);
-            throw new Error('Failed to update streak');
-        }
-    }
-
-    checkMilestone(days) {
-        return this.MILESTONE_TIERS[days] || null;
-    }
-
-    async celebrateStreak(days) {
-        const milestone = this.checkMilestone(days);
-        
-        if (milestone) {
-            // Show achievement toast
-            showToast(`${milestone} - ${days} Day Streak! 🎉`);
-
-            // Trigger confetti with custom colors based on milestone
-            confetti({
-                particleCount: Math.min(150 + (days * 2), 300),
-                spread: 90,
-                origin: { y: 0.6 },
-                colors: this.getMilestoneColors(days),
-                shapes: ['square', 'circle'],
-                ticks: 300
+            render();
             });
 
-            // Play celebration sound if enabled
-            this.playAchievementSound();
+            skillsCollection.onSnapshot(snapshot => {
+            appState.skills = {};
+            snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
+            if (appState.currentView === 'skills') render();
+            });
         }
-    }
 
-    getMilestoneColors(days) {
-        if (days >= 90) return ['#FFD700', '#FFA500', '#FF8C00']; // Gold theme
-        if (days >= 30) return ['#4CAF50', '#8BC34A', '#CDDC39']; // Green theme
-        return ['#FF4081', '#FF80AB', '#FF80AB']; // Default pink theme
-    }
+      class StreakTracker {
+            constructor(userId) {
+                this.userId = userId;
+                this.streakRef = db.collection('streaks').doc(userId);
+                this.MILESTONE_TIERS = {
+                    7: '🔥 Week Warrior',
+                    14: '⚡ Fortnight Fighter',
+                    30: '🌟 Monthly Master',
+                    60: '💫 Dedication Diamond',
+                    90: '👑 Quarterly King'
+                };
+            }
 
-    playAchievementSound() {
-        // Only play if user has enabled sounds
-        const sound = new Audio('/assets/achievement.mp3');
-        sound.volume = 0.5;
-        const playPromise = sound.play();
-        if (playPromise) {
-            playPromise.catch(() => {}); // Handle browsers that don't allow autoplay
+            normalizeDate(date) {
+                if (!date) return null;
+                const d = date.toDate ? date.toDate() : new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            }
+
+            isSameDay(date1, date2) {
+                if (!date1 || !date2) return false;
+                const d1 = this.normalizeDate(date1);
+                const d2 = this.normalizeDate(date2);
+                return d1.getTime() === d2.getTime();
+            }
+
+            isConsecutiveDay(lastDate, today) {
+                if (!lastDate || !today) return false;
+                const d1 = this.normalizeDate(lastDate);
+                const d2 = this.normalizeDate(today);
+                const diffTime = Math.abs(d2 - d1);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays === 1;
+            }
+
+            async updateStreak() {
+                try {
+                    const today = new Date();
+                    const streakDoc = await this.streakRef.get();
+                    const data = streakDoc.data() || { 
+                        current: 0, 
+                        lastStudy: null,
+                        bestStreak: 0,
+                        milestones: [],
+                        totalDays: 0
+                    };
+
+                    if (this.isSameDay(data.lastStudy, today)) {
+                        return {
+                            status: 'unchanged',
+                            streak: data.current,
+                            message: 'Already logged today'
+                        };
+                    }
+
+                    let updates = {
+                        lastStudy: today,
+                        totalDays: (data.totalDays || 0) + 1
+                    };
+
+                    if (this.isConsecutiveDay(data.lastStudy, today)) {
+                        const newStreak = data.current + 1;
+                        updates = {
+                            ...updates,
+                            current: newStreak,
+                            bestStreak: Math.max(newStreak, data.bestStreak || 0)
+                        };
+
+                        // Check for new milestone
+                        const milestone = this.checkMilestone(newStreak);
+                        if (milestone) {
+                            updates.milestones = firebase.firestore.FieldValue.arrayUnion({
+                                days: newStreak,
+                                achieved: today,
+                                title: milestone
+                            });
+                        }
+
+                        await this.streakRef.set(updates, { merge: true });
+                        await this.celebrateStreak(newStreak);
+
+                        return {
+                            status: 'extended',
+                            streak: newStreak,
+                            milestone,
+                            message: `Streak extended to ${newStreak} days!`
+                        };
+                    } 
+                    else {
+                        updates.current = 1;
+                        await this.streakRef.set(updates, { merge: true });
+
+                        return {
+                            status: 'reset',
+                            streak: 1,
+                            message: 'New streak started!'
+                        };
+                    }
+                } 
+                catch (error) {
+                    console.error('Error updating streak:', error);
+                    throw new Error('Failed to update streak');
+                }
+            }
+
+            checkMilestone(days) {
+                return this.MILESTONE_TIERS[days] || null;
+            }
+
+            async celebrateStreak(days) {
+                const milestone = this.checkMilestone(days);
+                
+                if (milestone) {
+                    // Show achievement toast
+                    showToast(`${milestone} - ${days} Day Streak! 🎉`);
+
+                    // Trigger confetti with custom colors based on milestone
+                    confetti({
+                        particleCount: Math.min(150 + (days * 2), 300),
+                        spread: 90,
+                        origin: { y: 0.6 },
+                        colors: this.getMilestoneColors(days),
+                        shapes: ['square', 'circle'],
+                        ticks: 300
+                    });
+
+                    // Play celebration sound if enabled
+                    this.playAchievementSound();
+                }
+            }
+
+            getMilestoneColors(days) {
+                if (days >= 90) return ['#FFD700', '#FFA500', '#FF8C00']; // Gold theme
+                if (days >= 30) return ['#4CAF50', '#8BC34A', '#CDDC39']; // Green theme
+                return ['#FF4081', '#FF80AB', '#FF80AB']; // Default pink theme
+            }
+
+            playAchievementSound() {
+                // Only play if user has enabled sounds
+                const sound = new Audio('/assets/achievement.mp3');
+                sound.volume = 0.5;
+                const playPromise = sound.play();
+                if (playPromise) {
+                    playPromise.catch(() => {}); // Handle browsers that don't allow autoplay
+                }
+            }
+
+            async getStreakStats() {
+                const doc = await this.streakRef.get();
+                const data = doc.data() || {};
+                
+                return {
+                    currentStreak: data.current || 0,
+                    bestStreak: data.bestStreak || 0,
+                    totalDays: data.totalDays || 0,
+                    milestones: data.milestones || [],
+                    lastStudy: data.lastStudy
+                };
+            }
         }
-    }
-
-    async getStreakStats() {
-        const doc = await this.streakRef.get();
-        const data = doc.data() || {};
-        
-        return {
-            currentStreak: data.current || 0,
-            bestStreak: data.bestStreak || 0,
-            totalDays: data.totalDays || 0,
-            milestones: data.milestones || [],
-            lastStudy: data.lastStudy
-        };
-    }
-}
 // =================================================================================
 // SECTION 5: HELPER CLASSES 
 // =================================================================================
@@ -1565,6 +1860,15 @@ function setupTimers() {
                     .join(':');
             }, 1000);
         });
+}
+
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    const button = document.getElementById('user-menu-button');
+    const isHidden = menu.classList.contains('hidden');
+    
+    menu.classList.toggle('hidden');
+    button.setAttribute('aria-expanded', !isHidden);
 }
 
 function createTaskCard(task) {
