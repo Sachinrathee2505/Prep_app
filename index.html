@@ -517,7 +517,14 @@
 
   <div id="app" class="min-h-screen flex flex-col">
     <header class="bg-gray-800 shadow-lg p-4 flex justify-between items-center sticky top-0 z-20">
-      <h1 class="text-xl md:text-2xl font-bold text-cyan-400">Level Up Hub 🌟</h1>
+        <h1 class="text-xl md:text-2xl font-bold">
+            <a href="#" 
+            id="home-link" 
+            class="text-cyan-400 hover:text-cyan-300 transition-all duration-200 
+                    hover:-translate-y-0.5 active:translate-y-0 inline-flex items-center gap-2">
+                Level Up Hub 🌟
+            </a>
+        </h1>
       <nav class="flex items-center space-x-4">
         <div id="nav-buttons" class="hidden items-center space-x-4">
           <button id="nav-dashboard" class="px-3 py-2 text-sm font-medium rounded-md text-gray-300">Dashboard</button>
@@ -539,7 +546,7 @@
               </button>
 
                 <div id="user-menu" 
-                    class="hidden z-30 origin-top-right absolute right-0 top-full mt-1 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" 
+                    class="z-30 origin-top-right absolute right-0 top-full mt-1 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" 
                     role="menu" 
                     aria-labelledby="user-menu-button">
                     <div class="px-4 py-3">
@@ -730,6 +737,16 @@
           navDashboard.onclick = () => navigate('dashboard');
           navSkills.onclick = () => navigate('skills');
           document.getElementById('nav-insights').onclick = () => navigate('insights');
+          const homeLink = document.getElementById('home-link');
+            if (homeLink) {
+                homeLink.addEventListener('click', (event) => {
+                    event.preventDefault(); // Stop the link from adding a '#' to the URL
+                    // Directly call the main navigation function.
+                    navigate('dashboard'); 
+                });
+            } else {
+                console.error('Home link element not found!');
+            }
           
           navigate('dashboard');
           add3DTiltEffect();
@@ -1919,7 +1936,7 @@ function createTaskCard(task) {
     return card;
 }
       function renderSkillsDashboard() {
-        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400">Skill Tree 🌳</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
+        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Tree 🌳</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
         const grid = document.getElementById('skills-grid');
         if (Object.keys(appState.skills).length === 0) {
           grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
@@ -2441,9 +2458,5 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
-
-
-
-
 
 
