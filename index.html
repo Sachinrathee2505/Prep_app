@@ -909,7 +909,7 @@
 
             playAchievementSound() {
                 // Only play if user has enabled sounds
-                const sound = new Audio('assets/achievement.mp3');
+                const sound = new Audio('assets/achievement.mp3.mp3');
                 sound.volume = 0.5;
                 const playPromise = sound.play();
                 if (playPromise) {
@@ -2458,5 +2458,6 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
 
