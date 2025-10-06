@@ -1577,6 +1577,9 @@ class FocusMode {
         }
 
         else if (e.target.closest('.delete-btn')) {
+          //play sound after task is deleted
+          playSound('assets/delete.mp3');
+
             // Animate the card fading out
             card.classList.add('task-fade-out');
 
@@ -2392,6 +2395,15 @@ function createTaskCard(task) {
             showToast('Report exported successfully!');
         }
 
+        function playSound(soundFile) {
+            const audio = new Audio(soundFile);
+            audio.volume = 0.5;
+            audio.play().catch(error => {
+                // This catch prevents console errors if the browser blocks autoplay
+                console.warn("Audio play prevented by browser:", error);
+            });
+        }
+
       function closeModal() { modalContainer.innerHTML = ''; }
 
       function showToast(message) {
@@ -2458,6 +2470,7 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
 
 
