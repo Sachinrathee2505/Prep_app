@@ -47,7 +47,36 @@
       border-radius: 0.5rem; /* rounded-lg */
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
     }
-
+    /* --- Styles for High-Priority Electric Border --- */
+    @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    .priority-high {
+      position: relative;
+      padding: 2px !important; 
+      background: linear-gradient(45deg, #7df9ff, #ff00ff, #ffff00, #7df9ff);
+      background-size: 400% 400%;
+      animation: gradient-shift 3s ease infinite;
+    }
+    
+    .priority-high::before {
+      content: '';
+      position: absolute;
+      inset: 2px; 
+      background: rgb(55 65 81); /* bg-gray-700 */
+      border-radius: 6px; /* A bit less than the parent's rounded-lg */
+      z-index: 1;
+    }
+    
+    /* Make sure the actual card content appears ON TOP of the inner background */
+    .priority-high > * {
+      position: relative;
+      z-index: 2;
+      padding: 1rem; 
+    }
     .card-transform-layer {
       /* This layer is the visual background that tilts */
       position: absolute;
@@ -1892,8 +1921,12 @@ function toggleUserMenu() {
 
 function createTaskCard(task) {
     const card = document.createElement('div');
-    card.className = `task-card relative`; 
-    card.dataset.id = task.id;
+    let cardClasses = 'task-card relative';
+    if (task.priority === 'High') {
+        cardClasses += ' priority-high';
+    }
+    card.className = cardClasses;
+        card.dataset.id = task.id;
 
     const totalTime = task.totalTimeLogged || 0;
     const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
@@ -2470,6 +2503,7 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
 
 
