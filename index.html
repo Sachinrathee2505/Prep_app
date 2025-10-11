@@ -562,6 +562,14 @@
 </head>
 
 <body class="bg-gray-900 text-gray-100 font-sans antialiased">
+    <svg class="fixed inset-0 w-full h-full pointer-events-none opacity-10" style="z-index: 0;">
+        <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+            </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+    </svg>
 
   <div id="app" class="min-h-screen flex flex-col">
     <header class="bg-gray-800 shadow-lg p-4 flex justify-between items-center sticky top-0 z-20">
@@ -2522,6 +2530,7 @@ function createTaskCard(task) {
 </div>
 </body>
 </html>
+
 
 
 
