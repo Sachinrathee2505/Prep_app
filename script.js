@@ -41,7 +41,14 @@
       // =================================================================================
       // SECTION 2: GLOBAL STATE & UI ELEMENTS
       // =================================================================================
-      let appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {}, isLoading: true };
+      let appState = { 
+        currentView: 'dashboard', 
+        tasks: [], 
+        skills: {}, 
+        timers: {}, 
+        isLoading: true,
+        activeFilter: 'active'
+     };
       let focusMode = null;
       const motivationalQuotes = [
         "The best way to predict the future is to create it.",
@@ -1054,6 +1061,79 @@ class FocusMode {
       // =================================================================================
       // SECTION 8: UI RENDERING, MODALS, AND UTILITIES
       // =================================================================================
+        const emptyStates = {
+            default: { title: "Ready to Level Up?", description: "Your dashboard is clear. Click the '+' button to add your first task and start your journey.", icon: "start" },
+            completed: { title: "No Completed Tasks Yet", description: "Complete some tasks to see them here and earn your rewards!", icon: "trophy" },
+            active: { title: "All Tasks Completed! 🎉", description: "Great job! You've completed all your tasks. Add new ones to keep the momentum going.", icon: "checkmark" },
+            overdue: { title: "You're All Caught Up!", description: "No overdue tasks. Keep up the great work!", icon: "clock" }
+        };
+
+        function renderEmptyState(state = 'default') {
+            const currentState = emptyStates[state] || emptyStates.default;
+            return `
+                <div class="flex flex-col items-center justify-center h-full text-center p-8">
+                    <svg class="w-16 h-16 text-gray-600 mb-4 transform hover:scale-110 transition-transform" fill="currentColor"><use xlink:href="#icon-${currentState.icon}"></use></svg>
+                    <h2 class="text-2xl font-bold text-white mb-2">${currentState.title}</h2>
+                    <p class="text-gray-400 max-w-sm mb-6">${currentState.description}</p>
+                    ${getQuickActions(state)}
+                    ${getMotivationalElement(state)}
+                </div>
+            `;
+        };
+
+        function getQuickActions(filter) {
+            const actions = {
+                default: [ { label: 'Add Task', icon: 'plus', action: 'addTask' }, { label: 'Import Tasks', icon: 'import', action: 'importTasks' } ],
+                completed: [ { label: 'View Active Tasks', icon: 'list', action: 'viewActive' }, { label: 'View Statistics', icon: 'chart', action: 'viewStats' } ],
+                active: [ { label: 'Add New Task', icon: 'plus', action: 'addTask' }, { label: 'View Completed', icon: 'check', action: 'viewCompleted' } ],
+                overdue: []
+            };
+            const actionButtons = actions[filter] || actions.default;
+            return `<div class="flex gap-4 mt-4">${actionButtons.map(action => `<button onclick="handleQuickAction('${action.action}')" class="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><svg class="w-4 h-4 mr-2"><use xlink:href="#icon-${action.icon}"></use></svg>${action.label}</button>`).join('')}</div>`;
+        };
+
+        function getMotivationalElement(filter) {
+            if (filter === 'completed') {
+                const rate = getCompletionRate();
+                return `<div class="mt-6 bg-gray-800 rounded-lg p-4 w-full max-w-sm"><div class="text-sm text-gray-400">Your Progress</div><div class="flex items-center gap-4 mt-2"><div class="flex-1"><div class="h-2 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width: ${rate}%"></div></div></div><div class="text-white font-medium">${rate}%</div></div></div>`;
+            }
+            return '';
+        };
+
+        function getCompletionRate() {
+            const total = appState.tasks.length;
+            if (total === 0) return 0;
+            const completed = appState.tasks.filter(t => t.completed).length;
+            return Math.round((completed / total) * 100);
+        };
+
+        function triggerConfettiAnimation() {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        };
+
+        // Make this function global so the inline onclick can find it
+        window.handleQuickAction = (action) => {
+            switch(action) {
+                case 'addTask':
+                    showTaskModal(db.collection('users').doc(auth.currentUser.uid).collection('tasks'));
+                    break;
+                case 'importTasks':
+                    showToast("Import feature coming soon!"); // Placeholder
+                    break;
+                case 'viewStats':
+                    navigate('insights');
+                    break;
+                case 'viewActive':
+                    appState.activeFilter = 'active';
+                    render();
+                    break;
+                case 'viewCompleted':
+                    appState.activeFilter = 'completed';
+                    render();
+                    break;
+            }
+        };
+
       function navigate(view) {
         appState.currentView = view;
         navDashboard.classList.toggle('bg-gray-700', view === 'dashboard');
@@ -1188,6 +1268,28 @@ function add3DTiltEffect() {
             renderSkeletons();
             return;
         }
+        let tasksToRender = [];
+        if (appState.activeFilter === 'completed') {
+            tasksToRender = appState.tasks.filter(t => t.completed);
+        } else {
+            const { startOfWeek } = getWeekRange(new Date());
+            const overdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek);
+            const thisWeek = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
+            tasksToRender = [...overdue, ...thisWeek];
+        }
+
+        if (tasksToRender.length === 0) {
+            let stateKey = appState.activeFilter;
+            if (appState.tasks.length === 0) {
+                stateKey = 'default';
+            }
+            mainContent.innerHTML = renderEmptyState(stateKey);
+            if (stateKey === 'active') {
+                triggerConfettiAnimation();
+            }
+            updateAlertBanner();
+            return;
+        }
     // Render main content
     mainContent.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1205,22 +1307,6 @@ function add3DTiltEffect() {
             </div>
         </div>
     `;
-    
-    // Task filtering with safer date handling
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const { startOfWeek } = getWeekRange(today);
-    
-    const overdueTasks = appState.tasks.filter(t => 
-        !t.completed && new Date(t.dueDate) < startOfWeek
-    );
-    
-    const thisWeekTasks = appState.tasks.filter(t => 
-        !t.completed && new Date(t.dueDate) >= startOfWeek
-    );
-    
-    const tasksToRender = [...overdueTasks, ...thisWeekTasks];
-
     // Render tasks with error handling
     tasksToRender.forEach(task => {
         const columnId = task.category.toLowerCase().replace(/ & /g, '');
