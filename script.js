@@ -655,7 +655,7 @@ class FocusMode {
       localStorage.removeItem('focusSession');
   }
 }
-      const connectionManager = new ConnectionManager();
+    const connectionManager = new ConnectionManager();
 
     // for heatmap 
     async function renderActivityHeatmap(tasksCollection) {
@@ -708,207 +708,207 @@ class FocusMode {
             heatmap.appendChild(cell);
         }
     }
-    class AchievementSystem {
-        constructor({ db, uid, confetti, tasksCollection, streakTracker }) {
-            this.db = db;
-            this.uid = uid;
-            this.confetti = confetti;
-            this.tasksCollection = tasksCollection; // For checking requirements
-            this.streakTracker = streakTracker;
+        class AchievementSystem {
+            constructor({ db, uid, confetti, tasksCollection, streakTracker }) {
+                this.db = db;
+                this.uid = uid;
+                this.confetti = confetti;
+                this.tasksCollection = tasksCollection; // For checking requirements
+                this.streakTracker = streakTracker;
 
-            //list of achievements
-            this.achievements = {
-                'first_week': { id: 'first_week', name: 'Week Warrior', description: 'Complete a 7-day streak', icon: '🔥', category: 'streak', requirement: { type: 'streak', value: 7 }, points: 50, rarity: 'common' },
-                'consistency_king': { id: 'consistency_king', name: 'Consistency King', description: 'Maintain a 30-day streak', icon: '👑', category: 'streak', requirement: { type: 'streak', value: 30 }, points: 200, rarity: 'rare' },
-                'unstoppable': { id: 'unstoppable', name: 'Unstoppable Force', description: 'Achieve a 100-day streak', icon: '💫', category: 'streak', requirement: { type: 'streak', value: 100 }, points: 500, rarity: 'legendary' },
-                'first_task': { id: 'first_task', name: 'Getting Started', description: 'Complete your first task', icon: '🎯', category: 'tasks', requirement: { type: 'tasks_completed', value: 1 }, points: 10, rarity: 'common' },
-                'task_master': { id: 'task_master', name: 'Task Master', description: 'Complete 50 tasks', icon: '⚡', category: 'tasks', requirement: { type: 'tasks_completed', value: 50 }, points: 100, rarity: 'uncommon' },
-                'centurion': { id: 'centurion', name: 'Centurion', description: 'Complete 100 tasks', icon: '💯', category: 'tasks', requirement: { type: 'tasks_completed', value: 100 }, points: 250, rarity: 'rare' },
-                'early_bird': { id: 'early_bird', name: 'Early Bird', description: 'Complete a task before 7 AM', icon: '🌅', category: 'special', requirement: { type: 'time_based', condition: 'early_morning' }, points: 30, rarity: 'uncommon' },
-                'night_owl': { id: 'night_owl', name: 'Night Owl', description: 'Complete a task after 11 PM', icon: '🦉', category: 'special', requirement: { type: 'time_based', condition: 'late_night' }, points: 30, rarity: 'uncommon' },
-                'weekend_warrior': { id: 'weekend_warrior', name: 'Weekend Warrior', description: 'Complete 10 tasks on weekends', icon: '🏖️', category: 'special', requirement: { type: 'weekend_tasks', value: 10 }, points: 50, rarity: 'uncommon' },
-                'full_stack_hero': { id: 'full_stack_hero', name: 'Full-Stack Hero', description: 'Log 50 hours in Full-Stack projects', icon: '🦸', category: 'category', requirement: { type: 'category_hours', category: 'fullstack', value: 50 }, points: 150, rarity: 'rare' },
-                'ml_enthusiast': { id: 'ml_enthusiast', name: 'ML Enthusiast', description: 'Complete 25 Machine Learning tasks', icon: '🤖', category: 'category', requirement: { type: 'category_tasks', category: 'mitx', value: 25 }, points: 150, rarity: 'rare' },
-                'ai_pioneer': { id: 'ai_pioneer', name: 'AI Pioneer', description: 'Log 30 hours in NVIDIA & AI Practice', icon: '🚀', category: 'category', requirement: { type: 'category_hours', category: 'nvidia', value: 30 }, points: 150, rarity: 'rare' },
-            };
+                //list of achievements
+                this.achievements = {
+                    'first_week': { id: 'first_week', name: 'Week Warrior', description: 'Complete a 7-day streak', icon: '🔥', category: 'streak', requirement: { type: 'streak', value: 7 }, points: 50, rarity: 'common' },
+                    'consistency_king': { id: 'consistency_king', name: 'Consistency King', description: 'Maintain a 30-day streak', icon: '👑', category: 'streak', requirement: { type: 'streak', value: 30 }, points: 200, rarity: 'rare' },
+                    'unstoppable': { id: 'unstoppable', name: 'Unstoppable Force', description: 'Achieve a 100-day streak', icon: '💫', category: 'streak', requirement: { type: 'streak', value: 100 }, points: 500, rarity: 'legendary' },
+                    'first_task': { id: 'first_task', name: 'Getting Started', description: 'Complete your first task', icon: '🎯', category: 'tasks', requirement: { type: 'tasks_completed', value: 1 }, points: 10, rarity: 'common' },
+                    'task_master': { id: 'task_master', name: 'Task Master', description: 'Complete 50 tasks', icon: '⚡', category: 'tasks', requirement: { type: 'tasks_completed', value: 50 }, points: 100, rarity: 'uncommon' },
+                    'centurion': { id: 'centurion', name: 'Centurion', description: 'Complete 100 tasks', icon: '💯', category: 'tasks', requirement: { type: 'tasks_completed', value: 100 }, points: 250, rarity: 'rare' },
+                    'early_bird': { id: 'early_bird', name: 'Early Bird', description: 'Complete a task before 7 AM', icon: '🌅', category: 'special', requirement: { type: 'time_based', condition: 'early_morning' }, points: 30, rarity: 'uncommon' },
+                    'night_owl': { id: 'night_owl', name: 'Night Owl', description: 'Complete a task after 11 PM', icon: '🦉', category: 'special', requirement: { type: 'time_based', condition: 'late_night' }, points: 30, rarity: 'uncommon' },
+                    'weekend_warrior': { id: 'weekend_warrior', name: 'Weekend Warrior', description: 'Complete 10 tasks on weekends', icon: '🏖️', category: 'special', requirement: { type: 'weekend_tasks', value: 10 }, points: 50, rarity: 'uncommon' },
+                    'full_stack_hero': { id: 'full_stack_hero', name: 'Full-Stack Hero', description: 'Log 50 hours in Full-Stack projects', icon: '🦸', category: 'category', requirement: { type: 'category_hours', category: 'fullstack', value: 50 }, points: 150, rarity: 'rare' },
+                    'ml_enthusiast': { id: 'ml_enthusiast', name: 'ML Enthusiast', description: 'Complete 25 Machine Learning tasks', icon: '🤖', category: 'category', requirement: { type: 'category_tasks', category: 'mitx', value: 25 }, points: 150, rarity: 'rare' },
+                    'ai_pioneer': { id: 'ai_pioneer', name: 'AI Pioneer', description: 'Log 30 hours in NVIDIA & AI Practice', icon: '🚀', category: 'category', requirement: { type: 'category_hours', category: 'nvidia', value: 30 }, points: 150, rarity: 'rare' },
+                };
 
-            this.userAchievements = [];
-            this.achievementSound = new Audio('assets/achievement.mp3'); // Preload audio
-            this.achievementSound.volume = 0.5;
+                this.userAchievements = [];
+                this.achievementSound = new Audio('assets/achievement.mp3'); // Preload audio
+                this.achievementSound.volume = 0.5;
 
-            this.loadUserAchievements();
-        }
-
-        async loadUserAchievements() {
-            try {
-                const snapshot = await this.db.collection('users').doc(this.uid).collection('achievements').get();
-                this.userAchievements = snapshot.docs.map(doc => doc.id);
-            } catch (error) {
-                console.error('Error loading achievements:', error);
+                this.loadUserAchievements();
             }
-        }
 
-        async checkAchievements(trigger, data) {
-            const newAchievements = [];
-            for (const [id, achievement] of Object.entries(this.achievements)) {
-                if (this.userAchievements.includes(id)) continue;
-                if (await this.checkRequirement(achievement, trigger, data)) {
-                    newAchievements.push(achievement);
-                    this.userAchievements.push(id);
+            async loadUserAchievements() {
+                try {
+                    const snapshot = await this.db.collection('users').doc(this.uid).collection('achievements').get();
+                    this.userAchievements = snapshot.docs.map(doc => doc.id);
+                } catch (error) {
+                    console.error('Error loading achievements:', error);
                 }
             }
-            if (newAchievements.length > 0) {
-                await this.saveNewAchievements(newAchievements);
-                this.showAchievementNotifications(newAchievements);
-            }
-            return newAchievements;
-        }
 
-        async checkRequirement(achievement, trigger, data) {
-            const req = achievement.requirement;
-            switch (req.type) {
-                case 'streak':
-                    return trigger === 'streak_update' && data.streak >= req.value;
-                case 'tasks_completed': {
-                    if (trigger !== 'task_complete') return false;
-                    const snapshot = await this.tasksCollection.where('completed', '==', true).get();
-                    return snapshot.size >= req.value;
+            async checkAchievements(trigger, data) {
+                const newAchievements = [];
+                for (const [id, achievement] of Object.entries(this.achievements)) {
+                    if (this.userAchievements.includes(id)) continue;
+                    if (await this.checkRequirement(achievement, trigger, data)) {
+                        newAchievements.push(achievement);
+                        this.userAchievements.push(id);
+                    }
                 }
-                case 'time_based': {
-                    if (trigger !== 'task_complete') return false;
-                    const hour = new Date().getHours();
-                    if (req.condition === 'early_morning') return hour < 7;
-                    if (req.condition === 'late_night') return hour >= 23;
-                    return false;
+                if (newAchievements.length > 0) {
+                    await this.saveNewAchievements(newAchievements);
+                    this.showAchievementNotifications(newAchievements);
                 }
-                // Add more requirement checks for other types here later
-                default:
-                    return false;
+                return newAchievements;
             }
-        }
 
-        async saveNewAchievements(newAchievements) {
-            try {
-                const userAchievementsRef = this.db.collection('users').doc(this.uid).collection('achievements');
-                const batch = this.db.batch();
-                newAchievements.forEach(ach => {
-                    const docRef = userAchievementsRef.doc(ach.id);
-                    batch.set(docRef, {
-                        id: ach.id,
-                        name: ach.name,
-                        earnedAt: new Date(),
-                        points: ach.points || 0
+            async checkRequirement(achievement, trigger, data) {
+                const req = achievement.requirement;
+                switch (req.type) {
+                    case 'streak':
+                        return trigger === 'streak_update' && data.streak >= req.value;
+                    case 'tasks_completed': {
+                        if (trigger !== 'task_complete') return false;
+                        const snapshot = await this.tasksCollection.where('completed', '==', true).get();
+                        return snapshot.size >= req.value;
+                    }
+                    case 'time_based': {
+                        if (trigger !== 'task_complete') return false;
+                        const hour = new Date().getHours();
+                        if (req.condition === 'early_morning') return hour < 7;
+                        if (req.condition === 'late_night') return hour >= 23;
+                        return false;
+                    }
+                    // Add more requirement checks for other types here later
+                    default:
+                        return false;
+                }
+            }
+
+            async saveNewAchievements(newAchievements) {
+                try {
+                    const userAchievementsRef = this.db.collection('users').doc(this.uid).collection('achievements');
+                    const batch = this.db.batch();
+                    newAchievements.forEach(ach => {
+                        const docRef = userAchievementsRef.doc(ach.id);
+                        batch.set(docRef, {
+                            id: ach.id,
+                            name: ach.name,
+                            earnedAt: new Date(),
+                            points: ach.points || 0
+                        });
                     });
+                    await batch.commit();
+                } catch (error) {
+                    console.error('Error saving achievements:', error);
+                }
+            }
+
+            showAchievementNotifications(achievements) {
+                achievements.forEach((achievement, index) => {
+                    setTimeout(() => this.showAchievementPopup(achievement), index * 1200);
                 });
-                await batch.commit();
-            } catch (error) {
-                console.error('Error saving achievements:', error);
             }
-        }
 
-        showAchievementNotifications(achievements) {
-            achievements.forEach((achievement, index) => {
-                setTimeout(() => this.showAchievementPopup(achievement), index * 1200);
-            });
-        }
-
-        showAchievementPopup(achievement) {
-            const popup = document.createElement('div');
-            popup.className = 'achievement-popup';
-            popup.innerHTML = `
-                <div class="achievement-content ${achievement.rarity}">
-                    <div class="achievement-icon">${achievement.icon}</div>
-                    <div class="achievement-details">
-                        <h3>Achievement Unlocked!</h3>
-                        <h4>${achievement.name}</h4>
-                        <p class="achievement-points">+${achievement.points} points</p>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(popup);
-            setTimeout(() => popup.classList.add('show'), 100);
-            this.playAchievementSound();
-            if (achievement.rarity === 'legendary') {
-                this.confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500', '#FF6347'] });
-            }
-            setTimeout(() => {
-                popup.classList.remove('show');
-                setTimeout(() => popup.remove(), 500);
-            }, 5000);
-        }
-
-        playAchievementSound() {
-            const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-            if (!soundEnabled) return;
-            this.achievementSound.currentTime = 0;
-            this.achievementSound.play().catch(error => console.warn("Audio play prevented by browser."));
-        }
-
-        async renderAchievementsPage() {
-            await this.loadUserAchievements(); // Ensure we have the latest data
-            const totalPoints = await this.calculateTotalPoints();
-            const unlockedCount = this.userAchievements.length;
-            const totalCount = Object.keys(this.achievements).length;
-
-            mainContent.innerHTML = `
-                <div class="achievements-page">
-                    <div class="achievements-header">
-                        <h1 class="text-3xl font-bold mb-4 text-white">Achievements & Badges</h1>
-                        <div class="stats-bar">
-                            <div class="stat"><span class="stat-value">${unlockedCount}/${totalCount}</span><span class="stat-label">Unlocked</span></div>
-                            <div class="stat"><span class="stat-value">${totalPoints}</span><span class="stat-label">Total Points</span></div>
-                            <div class="stat"><span class="stat-value">${this.getPlayerLevel(totalPoints).name}</span><span class="stat-label">Level</span></div>
+            showAchievementPopup(achievement) {
+                const popup = document.createElement('div');
+                popup.className = 'achievement-popup';
+                popup.innerHTML = `
+                    <div class="achievement-content ${achievement.rarity}">
+                        <div class="achievement-icon">${achievement.icon}</div>
+                        <div class="achievement-details">
+                            <h3>Achievement Unlocked!</h3>
+                            <h4>${achievement.name}</h4>
+                            <p class="achievement-points">+${achievement.points} points</p>
                         </div>
                     </div>
-                    <div class="achievements-categories">${this.renderAchievementsByCategory()}</div>
-                </div>`;
-        }
+                `;
+                document.body.appendChild(popup);
+                setTimeout(() => popup.classList.add('show'), 100);
+                this.playAchievementSound();
+                if (achievement.rarity === 'legendary') {
+                    this.confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500', '#FF6347'] });
+                }
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                    setTimeout(() => popup.remove(), 500);
+                }, 5000);
+            }
 
-        renderAchievementsByCategory() {
-            const categories = {
-                streak: { name: 'Streak Masters', icon: '🔥' },
-                tasks: { name: 'Task Champions', icon: '✅' },
-                category: { name: 'Category Experts', icon: '🎯' },
-                special: { name: 'Special Achievements', icon: '⭐' }
-            };
-            return Object.entries(categories).map(([catId, catInfo]) => {
-                const achievements = Object.values(this.achievements).filter(a => a.category === catId);
-                return `
-                    <div class="achievement-category">
-                        <h2 class="category-title"><span class="category-icon">${catInfo.icon}</span> ${catInfo.name}</h2>
-                        <div class="achievements-grid">${achievements.map(a => this.renderAchievementCard(a)).join('')}</div>
+            playAchievementSound() {
+                const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+                if (!soundEnabled) return;
+                this.achievementSound.currentTime = 0;
+                this.achievementSound.play().catch(error => console.warn("Audio play prevented by browser."));
+            }
+
+            async renderAchievementsPage() {
+                await this.loadUserAchievements(); // Ensure we have the latest data
+                const totalPoints = await this.calculateTotalPoints();
+                const unlockedCount = this.userAchievements.length;
+                const totalCount = Object.keys(this.achievements).length;
+
+                mainContent.innerHTML = `
+                    <div class="achievements-page">
+                        <div class="achievements-header">
+                            <h1 class="text-3xl font-bold mb-4 text-white">Achievements & Badges</h1>
+                            <div class="stats-bar">
+                                <div class="stat"><span class="stat-value">${unlockedCount}/${totalCount}</span><span class="stat-label">Unlocked</span></div>
+                                <div class="stat"><span class="stat-value">${totalPoints}</span><span class="stat-label">Total Points</span></div>
+                                <div class="stat"><span class="stat-value">${this.getPlayerLevel(totalPoints).name}</span><span class="stat-label">Level</span></div>
+                            </div>
+                        </div>
+                        <div class="achievements-categories">${this.renderAchievementsByCategory()}</div>
                     </div>`;
-            }).join('');
-        }
+            }
 
-        renderAchievementCard(achievement) {
-            const isUnlocked = this.userAchievements.includes(achievement.id);
-            return `
-                <div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'} ${achievement.rarity}">
-                    <div class="achievement-icon">${achievement.icon}</div>
-                    <h3 class="achievement-name">${achievement.name}</h3>
-                    <p class="achievement-description">${achievement.description}</p>
-                    <div class="achievement-footer">
-                        <span class="achievement-points">${achievement.points} pts</span>
-                        <span class="achievement-rarity">${achievement.rarity}</span>
-                    </div>
-                    ${!isUnlocked ? '<div class="locked-overlay">🔒</div>' : ''}
-                </div>`;
+            renderAchievementsByCategory() {
+                const categories = {
+                    streak: { name: 'Streak Masters', icon: '🔥' },
+                    tasks: { name: 'Task Champions', icon: '✅' },
+                    category: { name: 'Category Experts', icon: '🎯' },
+                    special: { name: 'Special Achievements', icon: '⭐' }
+                };
+                return Object.entries(categories).map(([catId, catInfo]) => {
+                    const achievements = Object.values(this.achievements).filter(a => a.category === catId);
+                    return `
+                        <div class="achievement-category">
+                            <h2 class="category-title"><span class="category-icon">${catInfo.icon}</span> ${catInfo.name}</h2>
+                            <div class="achievements-grid">${achievements.map(a => this.renderAchievementCard(a)).join('')}</div>
+                        </div>`;
+                }).join('');
+            }
+
+            renderAchievementCard(achievement) {
+                const isUnlocked = this.userAchievements.includes(achievement.id);
+                return `
+                    <div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'} ${achievement.rarity}">
+                        <div class="achievement-icon">${achievement.icon}</div>
+                        <h3 class="achievement-name">${achievement.name}</h3>
+                        <p class="achievement-description">${achievement.description}</p>
+                        <div class="achievement-footer">
+                            <span class="achievement-points">${achievement.points} pts</span>
+                            <span class="achievement-rarity">${achievement.rarity}</span>
+                        </div>
+                        ${!isUnlocked ? '<div class="locked-overlay">🔒</div>' : ''}
+                    </div>`;
+            }
+            
+            async calculateTotalPoints() {
+                const snapshot = await this.db.collection('users').doc(this.uid).collection('achievements').get();
+                return snapshot.docs.reduce((total, doc) => total + (doc.data().points || 0), 0);
+            }
+            
+            getPlayerLevel(points) {
+                const levels = [
+                    { min: 0, name: 'Novice' }, { min: 100, name: 'Apprentice' }, { min: 300, name: 'Journeyman' },
+                    { min: 600, name: 'Expert' }, { min: 1000, name: 'Master' }, { min: 1500, name: 'Grandmaster' }, { min: 2000, name: 'Legend' }
+                ];
+                return levels.slice().reverse().find(l => points >= l.min) || { name: 'Novice' };
+            }
         }
-        
-        async calculateTotalPoints() {
-            const snapshot = await this.db.collection('users').doc(this.uid).collection('achievements').get();
-            return snapshot.docs.reduce((total, doc) => total + (doc.data().points || 0), 0);
-        }
-        
-        getPlayerLevel(points) {
-            const levels = [
-                { min: 0, name: 'Novice' }, { min: 100, name: 'Apprentice' }, { min: 300, name: 'Journeyman' },
-                { min: 600, name: 'Expert' }, { min: 1000, name: 'Master' }, { min: 1500, name: 'Grandmaster' }, { min: 2000, name: 'Legend' }
-            ];
-            return levels.slice().reverse().find(l => points >= l.min) || { name: 'Novice' };
-        }
-    }
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
@@ -937,109 +937,235 @@ class FocusMode {
         showToast('Task added successfully!');
       }
 
-      async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
-        const card = e.target.closest('.task-card');
-        if (!card) return;
-        const taskId = card.dataset.id;
-        const task = appState.tasks.find(t => t.id === taskId);
-        if (!task) return;
+        async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
+            const card = e.target.closest('.task-card');
+            if (!card) return;
+            const taskId = card.dataset.id;
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (!task) return;
 
-        if (e.target.matches('.task-checkbox')) {
-            const isCompleted = e.target.checked;
+            // ✅ CHECKBOX - Task Completion
+            if (e.target.matches('.task-checkbox')) {
+                const isCompleted = e.target.checked;
 
-            if (isCompleted) {
-                // Only update the streak when a task is marked as complete
-                const streakTracker = new StreakTracker(auth.currentUser.uid);
+                try {
+                    if (isCompleted) {
+                        // Initialize updates object
+                        const updates = {
+                            completed: true,
+                            completedAt: new Date()
+                        };
 
-                // We call your new method and can log the result to see the cool status object!
-                const streakResult = await streakTracker.updateStreak();
-                console.log('Streak update result:', streakResult);
+                        // ✨ AUTO-STOP TIMER ON COMPLETION
+                        if (task.timerRunning && task.lastStartTime) {
+                            console.log("⏹️ Task completed with timer running. Stopping timer now.");
+                            
+                            // Calculate the final duration
+                            const lastStart = task.lastStartTime.toDate ? 
+                                task.lastStartTime.toDate() : 
+                                new Date(task.lastStartTime);
+                            
+                            const duration = Math.round((new Date() - lastStart) / 1000);
+                            
+                            // Add timer stop updates
+                            updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+                            updates.timerRunning = false;
+                            updates.lastStartTime = null;
 
-                await tasksCollection.doc(taskId).update({ completed: true });
-                const stats = await streakTracker.getStreakStats();
-                const completedTasksSnap = await tasksCollection.where('completed', '==', true).get();
+                            // Create the final time log entry
+                            await timeLogsCollection.add({
+                                taskId: taskId,
+                                duration: duration,
+                                category: task.category,
+                                timestamp: new Date(),
+                                userId: auth.currentUser.uid,
+                                completionStop: true
+                            });
 
-                achievementSystem.checkAchievements('task_complete', { 
-                    totalCompleted: completedTasksSnap.size,
-                    category: task.category 
-                });
-                achievementSystem.checkAchievements('streak_update', { streak: stats.currentStreak });
+                            console.log(`✅ Timer stopped. Duration: ${duration}s. Total: ${updates.totalTimeLogged}s`);
+                        }
 
-                showSkillRatingModal(task, skillsCollection);
-            } else {
-                // If a task is unchecked, we don't need to change the streak
-                await tasksCollection.doc(taskId).update({ completed: false });
-            }
-        }
+                        await tasksCollection.doc(taskId).update(updates);
 
-        // for sub-task completion and confetti ---
-        else if (e.target.matches('[data-subtask-index]')) {
-          const index = parseInt(e.target.dataset.subtaskIndex);
+                        // Update local task object
+                        Object.assign(task, updates);
 
-          // Mark the sub-task as completed in our local state
-          task.subtasks[index].completed = e.target.checked;
+                        // Update streak
+                        const streakTracker = new StreakTracker(auth.currentUser.uid);
+                        const streakResult = await streakTracker.updateStreak();
+                        console.log('Streak update result:', streakResult);
 
-          // Check if ALL sub-tasks for this project are now complete
-          const allSubtasksCompleted = task.subtasks.every(st => st.completed);
+                        // Check achievements
+                        const stats = await streakTracker.getStreakStats();
+                        const completedTasksSnap = await tasksCollection
+                            .where('completed', '==', true)
+                            .get();
 
-          if (allSubtasksCompleted) {
-            // If all are complete, trigger the confetti!
-            console.log("Project complete! Firing confetti!");
-            confetti({
-              particleCount: 150,
-              spread: 90,
-              origin: { y: 0.6 }
-            });
-          }
+                        achievementSystem.checkAchievements('task_complete', { 
+                            totalCompleted: completedTasksSnap.size,
+                            category: task.category 
+                        });
+                        achievementSystem.checkAchievements('streak_update', { 
+                            streak: stats.currentStreak 
+                        });
 
-          // Save the updated sub-tasks array back to Firestore
-          await tasksCollection.doc(taskId).update({ subtasks: task.subtasks });
-        }
+                        // Show skill rating modal
+                        showSkillRatingModal(task, skillsCollection);
 
-        else if (e.target.closest('.delete-btn')) {
-          //play sound after task is deleted
-          playSound('assets/delete.mp3');
+                        // Success notification
+                        if (typeof showNotification === 'function') {
+                            showNotification('Task completed! 🎉', 'success');
+                        }
 
-            // Animate the card fading out
-            card.classList.add('task-fade-out');
+                    } else {
+                        // ✅ UNCOMPLETE - Reopening task
+                        await tasksCollection.doc(taskId).update({
+                            completed: false,
+                            completedAt: null
+                        });
 
-            // Show the toast with the Undo option
-            showUndoToast("Task deleted.", () => {
-                // This is the UNDO logic
-                // It runs only if the user clicks "Undo"
-                card.classList.remove('task-fade-out');
-            });
+                        // Update local task object
+                        task.completed = false;
+                        task.completedAt = null;
 
-            // Set a timer. If Undo is NOT clicked, delete from Firestore.
-            setTimeout(() => {
-                // Check if the card still has the fade-out class.
-                // If it does, it means Undo was NOT clicked.
-                if (card.classList.contains('task-fade-out')) {
-                    createShatterEffect(card);
-                    tasksCollection.doc(taskId).delete();
+                        if (typeof showNotification === 'function') {
+                            showNotification('Task reopened', 'success');
+                        }
+                    }
+
+                    // Refresh UI
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                    if (typeof updateStats === 'function') updateStats();
+
+                } catch (error) {
+                    console.error('❌ Error updating task:', error);
+                    // Revert checkbox state on error
+                    e.target.checked = !isCompleted;
+                    if (typeof showNotification === 'function') {
+                        showNotification('Failed to update task. Please try again.', 'error');
+                    }
                 }
-            }, 7000); 
-        }
-        else if (e.target.closest('.timer-btn')) {
-          const isRunning = !task.timerRunning;
-          const updates = { timerRunning: isRunning };
-          if (isRunning) {
-            updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
-          } else if (task.lastStartTime) {
-            const duration = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-            updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
-            await timeLogsCollection.add({ taskId, duration, category: task.category, timestamp: new Date() });
-          }
-          await tasksCollection.doc(taskId).update(updates);
-        }
-        else if (e.target.closest('.focus-btn')) {
-          if (focusMode && !task.completed) {
-              focusMode.open(task);
-          } else if (task.completed) {
-              showToast("Cannot start focus session on a completed task.");
+            }
+
+            // ✅ SUBTASK COMPLETION - With Confetti
+            else if (e.target.matches('[data-subtask-index]')) {
+                try {
+                    const index = parseInt(e.target.dataset.subtaskIndex);
+
+                    // Mark the subtask as completed in local state
+                    task.subtasks[index].completed = e.target.checked;
+
+                    // Check if ALL subtasks are now complete
+                    const allSubtasksCompleted = task.subtasks.every(st => st.completed);
+
+                    if (allSubtasksCompleted && typeof confetti === 'function') {
+                        console.log("🎉 Project complete! Firing confetti!");
+                        confetti({
+                            particleCount: 150,
+                            spread: 90,
+                            origin: { y: 0.6 }
+                        });
+                    }
+
+                    // Save updated subtasks to Firestore
+                    await tasksCollection.doc(taskId).update({ 
+                        subtasks: task.subtasks 
+                    });
+
+                    // Refresh UI
+                    if (typeof renderDashboard === 'function') renderDashboard();
+
+                } catch (error) {
+                    console.error('❌ Error updating subtask:', error);
+                    e.target.checked = !e.target.checked; // Revert
+                }
+            }
+
+            // ✅ DELETE BUTTON - With Undo
+            else if (e.target.closest('.delete-btn')) {
+                // Play sound
+                if (typeof playSound === 'function') {
+                    playSound('assets/delete.mp3');
+                }
+
+                // Animate card fading out
+                card.classList.add('task-fade-out');
+
+                // Show toast with Undo option
+                showUndoToast("Task deleted.", () => {
+                    // UNDO logic - runs if user clicks Undo
+                    card.classList.remove('task-fade-out');
+                });
+
+                // Set timer - delete from Firestore if Undo NOT clicked
+                setTimeout(() => {
+                    if (card.classList.contains('task-fade-out')) {
+                        if (typeof createShatterEffect === 'function') {
+                            createShatterEffect(card);
+                        }
+                        tasksCollection.doc(taskId).delete().catch(err => {
+                            console.error('❌ Error deleting task:', err);
+                        });
+                    }
+                }, 7000);
+            }
+
+            // ✅ TIMER BUTTON - Start/Stop
+            else if (e.target.closest('.timer-btn')) {
+                try {
+                    const isRunning = !task.timerRunning;
+                    const updates = { timerRunning: isRunning };
+
+                    if (isRunning) {
+                        // Start timer
+                        updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+                    } else if (task.lastStartTime) {
+                        // Stop timer - calculate duration
+                        const lastStart = task.lastStartTime.toDate ? 
+                            task.lastStartTime.toDate() : 
+                            new Date(task.lastStartTime);
+                        
+                        const duration = Math.round((new Date() - lastStart) / 1000);
+                        updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+                        updates.lastStartTime = null;
+
+                        // Create time log entry
+                        await timeLogsCollection.add({
+                            taskId: taskId,
+                            duration: duration,
+                            category: task.category,
+                            timestamp: new Date(),
+                            userId: auth.currentUser.uid
+                        });
+                    }
+
+                    await tasksCollection.doc(taskId).update(updates);
+
+                    // Update local task
+                    Object.assign(task, updates);
+
+                    // Refresh UI
+                    if (typeof renderDashboard === 'function') renderDashboard();
+
+                } catch (error) {
+                    console.error('❌ Error updating timer:', error);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Failed to update timer', 'error');
+                    }
+                }
+            }
+
+            // ✅ FOCUS BUTTON - Start Focus Mode
+            else if (e.target.closest('.focus-btn')) {
+                if (focusMode && !task.completed) {
+                    focusMode.open(task);
+                } else if (task.completed) {
+                    if (typeof showToast === 'function') {
+                        showToast("Cannot start focus session on a completed task.");
+                    }
+                }
             }
         }
-      }
 
       // =================================================================================
       // SECTION 7: FIRESTORE LOGIC
