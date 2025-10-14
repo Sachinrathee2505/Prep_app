@@ -912,31 +912,6 @@ class FocusMode {
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
-      async function handleFormSubmit(e, tasksCollection) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const taskData = {
-          type: formData.get('type'),
-          title: formData.get('title'),
-          dueDate: formData.get('dueDate'),
-          priority: formData.get('priority'),
-          category: formData.get('category'),
-          url: formData.get('url'),
-          skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
-          completed: false,
-          createdAt: new Date().toISOString(),
-          totalTimeLogged: 0,
-          timerRunning: false,
-          lastStartTime: null
-        };
-        if (taskData.type === 'project') {
-          taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
-        }
-        await tasksCollection.add(taskData);
-        closeModal();
-        showToast('Task added successfully!');
-      }
-
         async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
             const card = e.target.closest('.task-card');
             if (!card) return;
@@ -985,6 +960,7 @@ class FocusMode {
                             console.log(`✅ Timer stopped. Duration: ${duration}s. Total: ${updates.totalTimeLogged}s`);
                         }
 
+                        // 🔥 Update with ALL changes 
                         await tasksCollection.doc(taskId).update(updates);
 
                         // Update local task object
@@ -1034,7 +1010,7 @@ class FocusMode {
                     }
 
                     // Refresh UI
-                    if (typeof renderDashboard === 'function') renderDashboard();
+                    renderDashboard();
                     if (typeof updateStats === 'function') updateStats();
 
                 } catch (error) {
@@ -1045,10 +1021,11 @@ class FocusMode {
                         showNotification('Failed to update task. Please try again.', 'error');
                     }
                 }
+                return; // Stop here
             }
 
             // ✅ SUBTASK COMPLETION - With Confetti
-            else if (e.target.matches('[data-subtask-index]')) {
+            if (e.target.matches('[data-subtask-index]')) {
                 try {
                     const index = parseInt(e.target.dataset.subtaskIndex);
 
@@ -1073,45 +1050,65 @@ class FocusMode {
                     });
 
                     // Refresh UI
-                    if (typeof renderDashboard === 'function') renderDashboard();
+                    renderDashboard();
 
                 } catch (error) {
                     console.error('❌ Error updating subtask:', error);
                     e.target.checked = !e.target.checked; // Revert
                 }
+                return; // Stop here
             }
 
-            // ✅ DELETE BUTTON - With Undo
-            else if (e.target.closest('.delete-btn')) {
-                // Play sound
-                if (typeof playSound === 'function') {
-                    playSound('assets/delete.mp3');
-                }
+            // ✅ DELETE BUTTON - Optimistic Update with Undo
+            if (e.target.closest('.delete-btn')) {
+                playSound('assets/delete.mp3');
 
-                // Animate card fading out
-                card.classList.add('task-fade-out');
+                // Find the task and its index in local data array
+                const taskIndex = appState.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) return;
 
-                // Show toast with Undo option
+                // Store the task object before removing it
+                const removedTask = appState.tasks[taskIndex];
+
+                // 1. Immediately remove from local state
+                appState.tasks.splice(taskIndex, 1);
+                
+                // 2. Immediately re-render (card disappears instantly)
+                renderDashboard();
+                if (typeof updateStats === 'function') updateStats();
+
+                // 3. Set up delayed permanent deletion
+                const deletionTimeout = setTimeout(() => {
+                    tasksCollection.doc(taskId).delete().catch(err => {
+                        console.error("❌ Error during final deletion:", err);
+                        // If deletion fails, restore the task
+                        appState.tasks.splice(taskIndex, 0, removedTask);
+                        renderDashboard();
+                        if (typeof updateStats === 'function') updateStats();
+                        showToast("Error: Could not delete task.");
+                    });
+                }, 7000); // 7 seconds to undo
+
+                // 4. Show toast with smart UNDO function
                 showUndoToast("Task deleted.", () => {
-                    // UNDO logic - runs if user clicks Undo
-                    card.classList.remove('task-fade-out');
+                    // UNDO LOGIC
+                    clearTimeout(deletionTimeout); // Cancel permanent deletion
+                    
+                    // Restore task to original position
+                    appState.tasks.splice(taskIndex, 0, removedTask);
+                    
+                    // Re-render to show the card again
+                    renderDashboard();
+                    if (typeof updateStats === 'function') updateStats();
+                    
+                    console.log("✅ Task deletion undone");
                 });
-
-                // Set timer - delete from Firestore if Undo NOT clicked
-                setTimeout(() => {
-                    if (card.classList.contains('task-fade-out')) {
-                        if (typeof createShatterEffect === 'function') {
-                            createShatterEffect(card);
-                        }
-                        tasksCollection.doc(taskId).delete().catch(err => {
-                            console.error('❌ Error deleting task:', err);
-                        });
-                    }
-                }, 7000);
+                
+                return; // Stop here
             }
 
             // ✅ TIMER BUTTON - Start/Stop
-            else if (e.target.closest('.timer-btn')) {
+            if (e.target.closest('.timer-btn')) {
                 try {
                     const isRunning = !task.timerRunning;
                     const updates = { timerRunning: isRunning };
@@ -1119,6 +1116,7 @@ class FocusMode {
                     if (isRunning) {
                         // Start timer
                         updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+                        console.log("⏱️ Timer started for task:", task.title);
                     } else if (task.lastStartTime) {
                         // Stop timer - calculate duration
                         const lastStart = task.lastStartTime.toDate ? 
@@ -1137,6 +1135,8 @@ class FocusMode {
                             timestamp: new Date(),
                             userId: auth.currentUser.uid
                         });
+
+                        console.log(`⏹️ Timer stopped. Duration: ${duration}s. Total: ${updates.totalTimeLogged}s`);
                     }
 
                     await tasksCollection.doc(taskId).update(updates);
@@ -1145,7 +1145,7 @@ class FocusMode {
                     Object.assign(task, updates);
 
                     // Refresh UI
-                    if (typeof renderDashboard === 'function') renderDashboard();
+                    renderDashboard();
 
                 } catch (error) {
                     console.error('❌ Error updating timer:', error);
@@ -1153,10 +1153,11 @@ class FocusMode {
                         showNotification('Failed to update timer', 'error');
                     }
                 }
+                return; // Stop here
             }
 
             // ✅ FOCUS BUTTON - Start Focus Mode
-            else if (e.target.closest('.focus-btn')) {
+            if (e.target.closest('.focus-btn')) {
                 if (focusMode && !task.completed) {
                     focusMode.open(task);
                 } else if (task.completed) {
@@ -1164,6 +1165,7 @@ class FocusMode {
                         showToast("Cannot start focus session on a completed task.");
                     }
                 }
+                return; // Stop here
             }
         }
 
