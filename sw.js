@@ -1,13 +1,12 @@
 // The version number is updated to trigger a new install
-const CACHE_NAME = 'placement-command-center-v3'; 
-
+const CACHE_NAME = 'placement-command-center-v4'; 
+    
 const URLS_TO_CACHE = [
   './', 
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png',
-  'https://cdn.tailwindcss.com' // <-- This is the new line we added
+  './icon-512.png'
 ];
 
 // Install the service worker and cache the files
@@ -45,5 +44,20 @@ self.addEventListener('activate', event => {
         })
       );
     })
+  );
+});
+
+self.addEventListener('push', event => {
+  const data = event.data.json();
+  console.log('Push received:', data);
+
+  const options = {
+    body: data.body,
+    icon: './icon-192.png',
+    badge: './icon-192.png'
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
   );
 });
