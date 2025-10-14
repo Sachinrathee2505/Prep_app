@@ -912,6 +912,31 @@ class FocusMode {
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
+      async function handleFormSubmit(e, tasksCollection) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const taskData = {
+          type: formData.get('type'),
+          title: formData.get('title'),
+          dueDate: formData.get('dueDate'),
+          priority: formData.get('priority'),
+          category: formData.get('category'),
+          url: formData.get('url'),
+          skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
+          completed: false,
+          createdAt: new Date().toISOString(),
+          totalTimeLogged: 0,
+          timerRunning: false,
+          lastStartTime: null
+        };
+        if (taskData.type === 'project') {
+          taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
+        }
+        await tasksCollection.add(taskData);
+        closeModal();
+        showToast('Task added successfully!');
+      }
+        
         async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
             const card = e.target.closest('.task-card');
             if (!card) return;
@@ -2060,4 +2085,5 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
+
     });
