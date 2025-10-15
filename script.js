@@ -936,8 +936,8 @@ class FocusMode {
         closeModal();
         showToast('Task added successfully!');
       }
-        
-        async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
+
+      async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
             const card = e.target.closest('.task-card');
             if (!card) return;
             const taskId = card.dataset.id;
@@ -1051,6 +1051,10 @@ class FocusMode {
 
             // ✅ SUBTASK COMPLETION - With Confetti
             if (e.target.matches('[data-subtask-index]')) {
+                if (task.completed) {
+                    e.preventDefault(); // Prevents the checkbox from toggling visually
+                    return;
+                }
                 try {
                     const index = parseInt(e.target.dataset.subtaskIndex);
 
@@ -1143,6 +1147,7 @@ class FocusMode {
                         updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
                         console.log("⏱️ Timer started for task:", task.title);
                     } else if (task.lastStartTime) {
+                        if (task.completed) return;
                         // Stop timer - calculate duration
                         const lastStart = task.lastStartTime.toDate ? 
                             task.lastStartTime.toDate() : 
@@ -1185,12 +1190,11 @@ class FocusMode {
             if (e.target.closest('.focus-btn')) {
                 if (focusMode && !task.completed) {
                     focusMode.open(task);
-                } else if (task.completed) {
-                    if (typeof showToast === 'function') {
-                        showToast("Cannot start focus session on a completed task.");
-                    }
                 }
-                return; // Stop here
+                else if (task.completed) {
+                    showToast("Cannot start a focus session on a completed task.");
+                    return;
+                }
             }
         }
 
@@ -2085,5 +2089,4 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
-
     });
