@@ -517,3 +517,11 @@
         transform: scale(1.05);
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
+    /* disable buttons on completed tasks */
+    .completed .timer-btn,
+    .completed .focus-btn,
+    .completed [data-subtask-index] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none; /* This physically prevents clicks */
+    }
