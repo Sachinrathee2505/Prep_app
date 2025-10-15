@@ -1137,8 +1137,14 @@ class FocusMode {
             }
 
             // ✅ TIMER BUTTON - Start/Stop
-            if (e.target.closest('.timer-btn')) {
+            else if (e.target.closest('.timer-btn')) {
                 try {
+                    // First, check if the task is already completed.
+                    if (task.completed) {
+                        showToast("Cannot start a timer on a completed task.");
+                        return; 
+                    }
+
                     const isRunning = !task.timerRunning;
                     const updates = { timerRunning: isRunning };
 
@@ -1147,7 +1153,6 @@ class FocusMode {
                         updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
                         console.log("⏱️ Timer started for task:", task.title);
                     } else if (task.lastStartTime) {
-                        if (task.completed) return;
                         // Stop timer - calculate duration
                         const lastStart = task.lastStartTime.toDate ? 
                             task.lastStartTime.toDate() : 
@@ -1183,7 +1188,7 @@ class FocusMode {
                         showNotification('Failed to update timer', 'error');
                     }
                 }
-                return; // Stop here
+                return; 
             }
 
             // ✅ FOCUS BUTTON - Start Focus Mode
@@ -2089,4 +2094,5 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
+
     });
