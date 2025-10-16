@@ -63,114 +63,293 @@
       // =================================================================================
       // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
       // =================================================================================
-      auth.onAuthStateChanged(user => {
-          const signInBtn = document.getElementById('sign-in-btn');
-          const userInfo = document.getElementById('user-info');
-          const addTaskBtn = document.getElementById('add-task-btn');
-          const navButtons = document.getElementById('nav-buttons');
 
-          if (user) {
-              // --- USER IS LOGGED IN ---
-              appState.isLoading = true;
-              userInfo.classList.remove('hidden');
-              userInfo.classList.add('flex');
-              signInBtn.classList.add('hidden');
-              addTaskBtn.classList.remove('hidden');
-              navButtons.classList.remove('hidden');
-              navButtons.classList.add('flex');
-              document.getElementById('user-pic').src = user.photoURL;
-              document.getElementById('user-name').textContent = user.displayName;
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // ========================================
+                    // USER IS LOGGED IN
+                    // ========================================
+                    console.log('✅ User authenticated:', user.email);
 
-              const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
-              const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
-              const timeLogsCollection = db.collection('users').doc(user.uid).collection('timeLogs');
+                    try {
+                        // Reference to user profile document
+                        const userProfileRef = db.collection('users').doc(user.uid);
+                        const userDoc = await userProfileRef.get();
 
-              initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection);
-              
-            } 
-          else {
-              // --- USER IS LOGGED OUT ---
-              userInfo.classList.add('hidden');
-              signInBtn.classList.remove('hidden');
-              addTaskBtn.classList.add('hidden');
-              navButtons.classList.add('hidden');
-              appState = { currentView: 'dashboard', tasks: [], skills: {}, timers: {}, isLoading: false };
-              Object.values(appState.timers).forEach(clearInterval);
-              mainContent.innerHTML = `<div class="text-center p-8 bg-gray-800 rounded-lg"><h2 class="text-2xl font-bold text-cyan-400">Welcome to Level Up Hub</h2><p class="mt-4 text-gray-300">Please sign in with Google to continue.</p></div>`;
-              signInBtn.onclick = () => auth.signInWithPopup(provider);
-            }
-        });
+                        if (!userDoc.exists || !userDoc.data().onboarded) {
+                            // ========================================
+                            // SCENARIO 1: NEW USER (No profile found)
+                            // ========================================
+                            console.log('🆕 New user detected - showing onboarding');
 
-      // =================================================================================
-      // SECTION 4: APP INITIALIZATION & DATA LISTENERS
-      // =================================================================================
-      function initializeAppLogic(user, tasksCollection, skillsCollection, timeLogsCollection) {
-          attachDataListeners(tasksCollection, skillsCollection);
-          const streakTracker = new StreakTracker(user.uid);
-          achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
-          focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
-          const streakRef = db.collection('streaks').doc(user.uid);
-          streakTracker.streakRef.onSnapshot(doc => {
-              const streakData = doc.data() || { current: 0 };
-              const streakDisplay = document.getElementById('streak-display');
-              const streakCount = document.getElementById('streak-count');
-              if (streakData.current > 0) {
-                  streakCount.textContent = streakData.current;
-                  streakDisplay.classList.remove('hidden');
-                  streakDisplay.classList.add('flex');
-                } 
-                else {
-                  streakDisplay.classList.add('hidden');
-                }
-            });
+                            const onboardingModal = document.getElementById('onboarding-modal');
+                            onboardingModal.classList.remove('hidden');
 
+                            // Setup onboarding form submission (only once)
+                            const onboardingForm = document.getElementById('onboarding-form');
+                            
+                            // Remove any existing listeners to prevent duplicates
+                            const newForm = onboardingForm.cloneNode(true);
+                            onboardingForm.parentNode.replaceChild(newForm, onboardingForm);
 
-          // --- DROPDOWN MENU LOGIC ---
-          const userMenuButton = document.getElementById('user-menu-button');
-          const userMenu = document.getElementById('user-menu');
-          const signOutBtn = document.getElementById('sign-out-btn');
+                            newForm.addEventListener('submit', async (e) => {
+                                e.preventDefault();
+                                
+                                const submitButton = newForm.querySelector('button[type="submit"]');
+                                submitButton.textContent = 'Setting up...';
+                                submitButton.disabled = true;
 
-          userMenuButton.addEventListener('click', () => {
-              userMenu.classList.toggle('hidden');
-            });
-          
-          // Close the menu if the user clicks anywhere outside of it
-          window.addEventListener('click', (event) => {
-              if (!userMenu.classList.contains('hidden')) {
-                  if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
-                      userMenu.classList.add('hidden');
+                                try {
+                                    // Get category names from form
+                                    const categoryNames = [
+                                        document.getElementById('category1').value.trim(),
+                                        document.getElementById('category2').value.trim(),
+                                        document.getElementById('category3').value.trim()
+                                    ];
+
+                                    // Create category objects with icons and colors
+                                    const focusAreas = categoryNames
+                                        .filter(name => name !== '') // Remove empty entries
+                                        .map((name, index) => ({
+                                            id: `focus_${index + 1}`,
+                                            name: name,
+                                            icon: ['💻', '🎓', '🚀'][index] || '📋',
+                                            color: ['#3B82F6', '#10B981', '#F59E0B'][index] || '#6B7280',
+                                            order: index + 1
+                                        }));
+
+                                    // Validate at least one category
+                                    if (focusAreas.length === 0) {
+                                        showNotification('Please enter at least one focus area', 'error');
+                                        submitButton.textContent = 'Get Started 🚀';
+                                        submitButton.disabled = false;
+                                        return;
+                                    }
+
+                                    // Save user profile to Firestore
+                                    await userProfileRef.set({
+                                        uid: user.uid,
+                                        email: user.email,
+                                        displayName: user.displayName || user.email.split('@')[0],
+                                        photoURL: user.photoURL || '',
+                                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                        onboarded: true,
+                                        focusAreas: focusAreas,
+                                        dailyGoal: 3,
+                                        settings: {
+                                            notifications: true,
+                                            theme: 'dark'
+                                        }
+                                    });
+
+                                    console.log('✅ User profile created:', focusAreas);
+
+                                    // Hide modal
+                                    onboardingModal.classList.add('hidden');
+
+                                    // Show celebration
+                                    if (typeof confetti === 'function') {
+                                        confetti({
+                                            particleCount: 150,
+                                            spread: 80,
+                                            origin: { y: 0.6 }
+                                        });
+                                    }
+
+                                    showNotification('🎉 Welcome to Level Up Hub!', 'success');
+
+                                    // Initialize app with new profile
+                                    const userProfile = {
+                                        focusAreas,
+                                        dailyGoal: 3,
+                                        onboarded: true
+                                    };
+
+                                    initializeAppForUser(user, userProfile);
+
+                                } catch (error) {
+                                    console.error('❌ Error saving onboarding data:', error);
+                                    showNotification('Failed to save preferences. Please try again.', 'error');
+                                    submitButton.textContent = 'Get Started 🚀';
+                                    submitButton.disabled = false;
+                                }
+                            });
+
+                        } else {
+                            // ========================================
+                            // SCENARIO 2: EXISTING USER (Profile exists)
+                            // ========================================
+                            console.log('✅ Existing user - loading profile');
+
+                            const userData = userDoc.data();
+                            const focusAreas = userData.focusAreas || [];
+
+                            // Validate profile data
+                            if (!focusAreas || focusAreas.length === 0) {
+                                console.warn('⚠️ User has no focus areas - showing onboarding');
+                                document.getElementById('onboarding-modal').classList.remove('hidden');
+                                return;
+                            }
+
+                            // Show user info in header
+                            const userInfo = document.getElementById('user-info');
+                            const signInBtn = document.getElementById('sign-in-btn');
+                            const addTaskBtn = document.getElementById('add-task-btn');
+                            const navButtons = document.getElementById('nav-buttons');
+
+                            if (userInfo) {
+                                userInfo.classList.remove('hidden');
+                                userInfo.classList.add('flex');
+                            }
+                            if (signInBtn) {
+                                signInBtn.onclick = async () => {
+                                    try {
+                                        await auth.signInWithRedirect(provider); 
+                                    } catch (error) {
+                                        // This will handle any errors that might occur during the redirect process
+                                        console.error('Sign-in error:', error);
+                                        showToast('Sign-in failed. Please try again.', 'error');
+                                    }
+                                };
+                            }
+                            if (addTaskBtn) addTaskBtn.classList.remove('hidden');
+                            if (navButtons) {
+                                navButtons.classList.remove('hidden');
+                                navButtons.classList.add('flex');
+                            }
+
+                            // Update user display
+                            const userPic = document.getElementById('user-pic');
+                            const userName = document.getElementById('user-name');
+                            if (userPic) userPic.src = user.photoURL || 'assets/default-avatar.png';
+                            if (userName) userName.textContent = user.displayName || user.email.split('@')[0];
+
+                            // Initialize app with user profile
+                            const userProfile = {
+                                focusAreas: focusAreas,
+                                dailyGoal: userData.dailyGoal || 3,
+                                onboarded: true,
+                                settings: userData.settings || {}
+                            };
+
+                            initializeAppForUser(user, userProfile);
+                        }
+
+                    } catch (error) {
+                        console.error('❌ Error loading user profile:', error);
+                        showNotification('Failed to load profile. Please refresh the page.', 'error');
+                    }
+
+                } else {
+                    // ========================================
+                    // USER IS LOGGED OUT
+                    // ========================================
+                    console.log('🔓 User logged out');
+
+                    // Hide user-specific UI
+                    const userInfo = document.getElementById('user-info');
+                    const signInBtn = document.getElementById('sign-in-btn');
+                    const addTaskBtn = document.getElementById('add-task-btn');
+                    const navButtons = document.getElementById('nav-buttons');
+                    const mainContent = document.getElementById('main-content');
+
+                    if (userInfo) userInfo.classList.add('hidden');
+                    if (signInBtn) {
+                        signInBtn.classList.remove('hidden');
+                        signInBtn.onclick = () => auth.signInWithPopup(provider);
+                    }
+                    if (addTaskBtn) addTaskBtn.classList.add('hidden');
+                    if (navButtons) navButtons.classList.add('hidden');
+
+                    // Reset app state
+                    appState = { 
+                        currentView: 'dashboard', 
+                        tasks: [], 
+                        skills: {}, 
+                        timers: {}, 
+                        isLoading: false,
+                        userCategories: [],
+                        userProfile: null
+                    };
+
+                    // Clear any running timers
+                    Object.values(appState.timers).forEach(clearInterval);
+
+                    // Show logged out message
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div class="text-center p-8 bg-gray-800 rounded-lg">
+                                <div class="text-6xl mb-4">👋</div>
+                                <h2 class="text-2xl font-bold text-cyan-400 mb-2">Welcome to Level Up Hub</h2>
+                                <p class="text-gray-300">Please sign in with Google to continue.</p>
+                            </div>
+                        `;
                     }
                 }
             });
 
-            document.getElementById('achievements-btn').onclick = () => {
-            document.getElementById('user-menu').classList.add('hidden');
-            achievementSystem.renderAchievementsPage();
-            };
+      // =================================================================================
+      // SECTION 4: APP INITIALIZATION & DATA LISTENERS
+      // =================================================================================
+      function initializeAppForUser(user, userProfile) {
+        // Store user's custom categories and profile in the global app state
+        appState.userCategories = userProfile.focusAreas;
+        appState.userProfile = userProfile;
 
-          signOutBtn.onclick = () => auth.signOut();
-          
-          focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
-          document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
-          document.getElementById('report-btn').onclick = () => showWeeklyReportModal(timeLogsCollection, tasksCollection);
-          mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection);
-          navDashboard.onclick = () => navigate('dashboard');
-          navSkills.onclick = () => navigate('skills');
-          document.getElementById('nav-insights').onclick = () => navigate('insights');
-          const homeLink = document.getElementById('home-link');
-            if (homeLink) {
-                homeLink.addEventListener('click', (event) => {
-                    event.preventDefault(); // Stop the link from adding a '#' to the URL
-                    // Directly call the main navigation function.
-                    navigate('dashboard'); 
-                });
+        // Set up the real-time data listeners
+        const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
+        const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
+        attachDataListeners(tasksCollection, skillsCollection);
+
+        // Initialize all helper classes
+        const streakTracker = new StreakTracker(user.uid);
+        achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
+        focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
+        
+        // Set up the real-time UI listener for the streak display
+        streakTracker.streakRef.onSnapshot(doc => {
+            const streakData = doc.data() || { current: 0 };
+            const streakDisplay = document.getElementById('streak-display');
+            const streakCount = document.getElementById('streak-count');
+            if (streakData.current > 0) {
+                streakCount.textContent = streakData.current;
+                streakDisplay.classList.remove('hidden');
+                streakDisplay.classList.add('flex');
             } else {
-                console.error('Home link element not found!');
+                streakDisplay.classList.add('hidden');
             }
-          
-          navigate('dashboard');
-          add3DTiltEffect();
-        }
+        });
+
+        // Set up the logic for the user profile dropdown menu
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userMenu = document.getElementById('user-menu');
+        userMenuButton.addEventListener('click', () => userMenu.classList.toggle('hidden'));
+        window.addEventListener('click', (event) => {
+            if (!userMenu.classList.contains('hidden') && !userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        // Attach all main event handlers for the app's buttons
+        document.getElementById('sign-out-btn').onclick = () => auth.signOut();
+        document.getElementById('achievements-btn').onclick = () => {
+            userMenu.classList.add('hidden');
+            achievementSystem.renderAchievementsPage();
+        };
+        document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
+        document.getElementById('report-btn').onclick = () => showWeeklyReportModal(db.collection('users').doc(user.uid).collection('timeLogs'), tasksCollection);
+        document.getElementById('home-link').onclick = (e) => { e.preventDefault(); navigate('dashboard'); };
+        
+        mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, db.collection('users').doc(user.uid).collection('timeLogs'), achievementSystem, streakTracker);
+        
+        navDashboard.onclick = () => navigate('dashboard');
+        navSkills.onclick = () => navigate('skills');
+        document.getElementById('nav-insights').onclick = () => navigate('insights');
+        
+        // Perform initial setup
+        navigate('dashboard');
+        add3DTiltEffect();
+      }
 
       function attachDataListeners(tasksCollection, skillsCollection) {
         
@@ -1411,6 +1590,7 @@ function add3DTiltEffect() {
 
       function render() {
         if (appState.currentView === 'dashboard') renderDashboard();
+
         else if (appState.currentView === 'skills') renderSkillsDashboard();
         else if (appState.currentView === 'insights') {
             const uid = auth.currentUser.uid;
@@ -1421,15 +1601,30 @@ function add3DTiltEffect() {
         }
       }
 
-      function renderDashboard() {
-        
-    // Clear existing timers first
-    cleanupTimers();
-        // If the app is in a loading state, show skeletons and stop.
+    function renderDashboard() {
         if (appState.isLoading) {
             renderSkeletons();
             return;
         }
+        if (!appState.userCategories || appState.userCategories.length === 0) {
+            mainContent.innerHTML = `<div class="text-center p-8"><p class="text-gray-400">Loading your personalized dashboard...</p></div>`;
+            return;
+        }
+
+        cleanupTimers();
+
+        // Dynamically create the column HTML from the user's categories
+        const columnsHTML = appState.userCategories.map(cat => `
+            <div id="col-${cat.id}" class="bg-gray-800 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-4" style="color: ${cat.color};">${cat.icon || '🎯'} ${cat.name}</h2>
+                <div class="space-y-4"></div>
+            </div>
+        `).join('');
+
+        // Set the main content HTML ONCE
+        mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-${appState.userCategories.length} gap-6">${columnsHTML}</div>`;
+        
+        // Filter and prepare tasks to render
         let tasksToRender = [];
         if (appState.activeFilter === 'completed') {
             tasksToRender = appState.tasks.filter(t => t.completed);
@@ -1440,52 +1635,31 @@ function add3DTiltEffect() {
             tasksToRender = [...overdue, ...thisWeek];
         }
 
+        // Handle the empty state
         if (tasksToRender.length === 0) {
             let stateKey = appState.activeFilter;
-            if (appState.tasks.length === 0) {
-                stateKey = 'default';
-            }
+            if (appState.tasks.length === 0) stateKey = 'default';
             mainContent.innerHTML = renderEmptyState(stateKey);
-            if (stateKey === 'active') {
-                triggerConfettiAnimation();
-            }
+            if (stateKey === 'active') triggerConfettiAnimation();
             updateAlertBanner();
-            return;
+            return; 
         }
-    // Render main content
-    mainContent.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div id="col-fullstack" class="bg-gray-800 rounded-lg p-4">
-                <h2 class="text-lg font-bold mb-4 text-green-400">Full-Stack & Projects</h2>
-                <div class="space-y-4"></div>
-            </div>
-            <div id="col-mitx" class="bg-gray-800 rounded-lg p-4">
-                <h2 class="text-lg font-bold mb-4 text-blue-400">MITx Machine Learning</h2>
-                <div class="space-y-4"></div>
-            </div>
-            <div id="col-nvidia" class="bg-gray-800 rounded-lg p-4">
-                <h2 class="text-lg font-bold mb-4 text-purple-400">NVIDIA & AI Practice</h2>
-                <div class="space-y-4"></div>
-            </div>
-        </div>
-    `;
-    // Render tasks with error handling
-    tasksToRender.forEach(task => {
-        const columnId = task.category.toLowerCase().replace(/ & /g, '');
-        const column = mainContent.querySelector(`#col-${columnId} .space-y-4`);
-        if (!column) {
-            console.warn(`Column not found for category: ${task.category}`);
-            return;
-        }
-        column.appendChild(createTaskCard(task));
-    });
+        
+        // Render the task cards into the dynamic columns
+        tasksToRender.forEach(task => {
+            const column = mainContent.querySelector(`#col-${task.category} .space-y-4`);
+            if (column) {
+                column.appendChild(createTaskCard(task));
+            } else {
+                // Fallback for tasks with old category names
+                const firstColumn = mainContent.querySelector('.space-y-4');
+                if(firstColumn) firstColumn.appendChild(createTaskCard(task));
+            }
+        });
 
-    // Update alert banner
-    updateAlertBanner();
-
-    // Set up new timers
-    setupTimers();
-}
+        updateAlertBanner();
+        setupTimers();
+    }
 
 function cleanupTimers() {
     if (appState.timers) {
@@ -1619,22 +1793,87 @@ function createTaskCard(task) {
         });
       }
 
-      function showTaskModal(tasksCollection) {
-        modalContainer.innerHTML = `<div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"><form id="task-form"><h2 class="text-xl font-bold mb-4">Add New Item</h2><div class="space-y-4"><div><label for="task-type" class="block text-sm font-medium text-gray-300">Type</label><select id="task-type" name="type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="task">Standard Task</option><option value="project">Project</option><option value="study_topic">Study Topic</option></select></div><div><label for="task-title" class="block text-sm font-medium text-gray-300">Title</label><input type="text" id="task-title" name="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div id="project-subtasks-container" class="hidden"><label class="block text-sm font-medium text-gray-300">Sub-tasks</label><div id="subtasks-list" class="space-y-2 mt-1"></div><button type="button" id="add-subtask-btn" class="mt-2 text-sm text-cyan-400 hover:underline">+ Add sub-task</button></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="task-due-date" class="block text-sm font-medium text-gray-300">Due Date</label><input type="date" id="task-due-date" name="dueDate" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-priority" class="block text-sm font-medium text-gray-300">Priority</label><select id="task-priority" name="priority" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div><div><label for="task-category" class="block text-sm font-medium text-gray-300">Category</label><select id="task-category" name="category" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"><option value="fullstack">Full-Stack & Projects</option><option value="mitx">MITx Machine Learning</option><option value="nvidia">NVIDIA & AI Practice</option></select></div><div><label for="task-url" class="block text-sm font-medium text-gray-300">Resource URL (Optional)</label><input type="url" id="task-url" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500"></div><div><label for="task-skills" class="block text-sm font-medium text-gray-300">Skills (comma-separated)</label><input type="text" id="task-skills" name="skills" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., React, Python, CUDA"></div></div><div class="mt-6 flex justify-end space-x-4"><button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button><button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Add Item</button></div></form></div></div>`;
-        document.getElementById('cancel-task-btn').onclick = closeModal;
-        document.getElementById('task-form').onsubmit = (e) => handleFormSubmit(e, tasksCollection);
-        const taskTypeSelect = document.getElementById('task-type');
-        const subtasksContainer = document.getElementById('project-subtasks-container');
-        taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
-        document.getElementById('add-subtask-btn').onclick = () => {
-          const subtaskList = document.getElementById('subtasks-list');
-          const newSubtask = document.createElement('div');
-          newSubtask.className = 'flex items-center space-x-2';
-          newSubtask.innerHTML = `<input type="text" class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" placeholder="Sub-task description"><button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>`;
-          subtaskList.appendChild(newSubtask);
-          newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
-        };
-      }
+        function showTaskModal(tasksCollection) {
+            const categories = appState.userCategories || [];
+            const categoryOptions = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+
+            modalContainer.innerHTML = `
+                <div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                        <form id="task-form">
+                            <h2 class="text-xl font-bold mb-4">Add New Item</h2>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="task-type" class="block text-sm font-medium text-gray-300">Type</label>
+                                    <select id="task-type" name="type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                        <option value="task">Standard Task</option>
+                                        <option value="project">Project</option>
+                                        <option value="study_topic">Study Topic</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="task-title" class="block text-sm font-medium text-gray-300">Title</label>
+                                    <input type="text" id="task-title" name="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                </div>
+                                <div id="project-subtasks-container" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300">Sub-tasks</label>
+                                    <div id="subtasks-list" class="space-y-2 mt-1"></div>
+                                    <button type="button" id="add-subtask-btn" class="mt-2 text-sm text-cyan-400 hover:underline">+ Add sub-task</button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="task-due-date" class="block text-sm font-medium text-gray-300">Due Date</label>
+                                        <input type="date" id="task-due-date" name="dueDate" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                    </div>
+                                    <div>
+                                        <label for="task-priority" class="block text-sm font-medium text-gray-300">Priority</label>
+                                        <select id="task-priority" name="priority" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                            <option>High</option>
+                                            <option selected>Medium</option>
+                                            <option>Low</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="task-category" class="block text-sm font-medium text-gray-300">Category</label>
+                                    <select id="task-category" name="category" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                        ${categoryOptions} 
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="task-url" class="block text-sm font-medium text-gray-300">Resource URL (Optional)</label>
+                                    <input type="url" id="task-url" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                </div>
+                                <div>
+                                    <label for="task-skills" class="block text-sm font-medium text-gray-300">Skills (comma-separated)</label>
+                                    <input type="text" id="task-skills" name="skills" placeholder="e.g., React, Python, CUDA" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end space-x-4">
+                                <button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button>
+                                <button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">Add Item</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('cancel-task-btn').onclick = closeModal;
+            document.getElementById('task-form').onsubmit = (e) => handleFormSubmit(e, tasksCollection);
+            
+            const taskTypeSelect = document.getElementById('task-type');
+            const subtasksContainer = document.getElementById('project-subtasks-container');
+            taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
+            
+            document.getElementById('add-subtask-btn').onclick = () => {
+                const subtaskList = document.getElementById('subtasks-list');
+                const newSubtask = document.createElement('div');
+                newSubtask.className = 'flex items-center space-x-2';
+                newSubtask.innerHTML = `<input type="text" class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" placeholder="Sub-task description"><button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>`;
+                subtaskList.appendChild(newSubtask);
+                newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
+            };
+        }
 
       async function showSkillRatingModal(task, skillsCollection) {
         if (!task.skills || task.skills.length === 0) return;
@@ -2094,5 +2333,4 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
-
     });
