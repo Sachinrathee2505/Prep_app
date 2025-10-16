@@ -120,7 +120,7 @@
 
                                     // Validate at least one category
                                     if (focusAreas.length === 0) {
-                                        showNotification('Please enter at least one focus area', 'error');
+                                        showToast('Please enter at least one focus area', 'error');
                                         submitButton.textContent = 'Get Started 🚀';
                                         submitButton.disabled = false;
                                         return;
@@ -156,7 +156,7 @@
                                         });
                                     }
 
-                                    showNotification('🎉 Welcome to Level Up Hub!', 'success');
+                                    showToast('🎉 Welcome to Level Up Hub!', 'success');
 
                                     // Initialize app with new profile
                                     const userProfile = {
@@ -169,7 +169,7 @@
 
                                 } catch (error) {
                                     console.error('❌ Error saving onboarding data:', error);
-                                    showNotification('Failed to save preferences. Please try again.', 'error');
+                                    showToast('Failed to save preferences. Please try again.', 'error');
                                     submitButton.textContent = 'Get Started 🚀';
                                     submitButton.disabled = false;
                                 }
@@ -237,7 +237,7 @@
 
                     } catch (error) {
                         console.error('❌ Error loading user profile:', error);
-                        showNotification('Failed to load profile. Please refresh the page.', 'error');
+                        showToast('Failed to load profile. Please refresh the page.', 'error');
                     }
 
                 } else {
@@ -1193,8 +1193,8 @@ class FocusMode {
                         showSkillRatingModal(task, skillsCollection);
 
                         // Success notification
-                        if (typeof showNotification === 'function') {
-                            showNotification('Task completed! 🎉', 'success');
+                        if (typeof showToast === 'function') {
+                            showToast('Task completed! 🎉', 'success');
                         }
 
                     } else {
@@ -1208,8 +1208,8 @@ class FocusMode {
                         task.completed = false;
                         task.completedAt = null;
 
-                        if (typeof showNotification === 'function') {
-                            showNotification('Task reopened', 'success');
+                        if (typeof showToast === 'function') {
+                            showToast('Task reopened', 'success');
                         }
                     }
 
@@ -1221,8 +1221,8 @@ class FocusMode {
                     console.error('❌ Error updating task:', error);
                     // Revert checkbox state on error
                     e.target.checked = !isCompleted;
-                    if (typeof showNotification === 'function') {
-                        showNotification('Failed to update task. Please try again.', 'error');
+                    if (typeof showToast === 'function') {
+                        showToast('Failed to update task. Please try again.', 'error');
                     }
                 }
                 return; // Stop here
@@ -1363,8 +1363,8 @@ class FocusMode {
 
                 } catch (error) {
                     console.error('❌ Error updating timer:', error);
-                    if (typeof showNotification === 'function') {
-                        showNotification('Failed to update timer', 'error');
+                    if (typeof showToast === 'function') {
+                        showToast('Failed to update timer', 'error');
                     }
                 }
                 return; 
