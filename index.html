@@ -153,41 +153,57 @@
   <script src="script.js"></script>
 
   <div id="focusMode" class="focus-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="focusTaskName">
-  <div class="focus-container">
-    <button class="focus-close" aria-label="Exit focus mode" title="Exit focus mode">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-    </button>
-    <div class="focus-content" style="display: none;">
-      <h1 id="focusTaskName" class="focus-task-name">Task Name</h1>
-      <div class="focus-timer-group">
-        <div class="focus-timer" id="focusTimerDisplay">25:00</div>
-        <div class="focus-progress"><div class="focus-progress-bar" id="focusProgressBar"></div></div>
-        <div class="focus-status" id="focusStatus">Focus Session</div>
+    <div class="focus-container">
+      <button class="focus-close" aria-label="Exit focus mode" title="Exit focus mode">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="focus-content" style="display: none;">
+        <h1 id="focusTaskName" class="focus-task-name">Task Name</h1>
+        <div class="focus-timer-group">
+          <div class="focus-timer" id="focusTimerDisplay">25:00</div>
+          <div class="focus-progress"><div class="focus-progress-bar" id="focusProgressBar"></div></div>
+          <div class="focus-status" id="focusStatus">Focus Session</div>
+        </div>
+        <div class="focus-controls">
+          <button class="focus-btn focus-btn-primary" id="focusToggleBtn">Start Focus</button>
+          <button class="focus-btn focus-btn-secondary" id="focusEndBtn">End Session</button>
+        </div>
+        <div class="focus-motivation" id="focusMotivation">⚡ Deep work mode activated</div>
       </div>
-      <div class="focus-controls">
-        <button class="focus-btn focus-btn-primary" id="focusToggleBtn">Start Focus</button>
-        <button class="focus-btn focus-btn-secondary" id="focusEndBtn">End Session</button>
-      </div>
-      <div class="focus-motivation" id="focusMotivation">⚡ Deep work mode activated</div>
-    </div>
-    <div class="focus-presets" id="focusPresets">
-      <h2>Choose session length:</h2>
-      <div class="preset-grid">
-        <button class="preset-btn" data-minutes="25"><span class="preset-time">25 min</span><span class="preset-label">Quick Focus</span></button>
-        <button class="preset-btn" data-minutes="50"><span class="preset-time">50 min</span><span class="preset-label">Deep Work</span></button>
-        <button class="preset-btn" data-minutes="90"><span class="preset-time">90 min</span><span class="preset-label">Flow State</span></button>
-        <button class="preset-btn" data-minutes="custom"><span class="preset-time">Custom</span><span class="preset-label">Set your own</span></button>
+      <div class="focus-presets" id="focusPresets">
+        <h2>Choose session length:</h2>
+        <div class="preset-grid">
+          <button class="preset-btn" data-minutes="25"><span class="preset-time">25 min</span><span class="preset-label">Quick Focus</span></button>
+          <button class="preset-btn" data-minutes="50"><span class="preset-time">50 min</span><span class="preset-label">Deep Work</span></button>
+          <button class="preset-btn" data-minutes="90"><span class="preset-time">90 min</span><span class="preset-label">Flow State</span></button>
+          <button class="preset-btn" data-minutes="custom"><span class="preset-time">Custom</span><span class="preset-label">Set your own</span></button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div id="breakOverlay" class="break-overlay hidden">
-  <div class="break-content">
-    <h2>Great work! Time for a break</h2>
-    <div class="break-timer" id="breakTimer">5:00</div>
-    <button class="focus-btn focus-btn-primary" id="skipBreakBtn">Skip Break</button>
+  <div id="breakOverlay" class="break-overlay hidden">
+    <div class="break-content">
+      <h2>Great work! Time for a break</h2>
+      <div class="break-timer" id="breakTimer">5:00</div>
+      <button class="focus-btn focus-btn-primary" id="skipBreakBtn">Skip Break</button>
+    </div>
   </div>
-</div>
+  <div id="onboarding-modal" class="hidden fixed inset-0 bg-gray-900 z-50 flex items-center justify-center p-4">
+          <div class="w-full max-w-lg text-center">
+              <h1 class="text-3xl font-bold text-white mb-2">Welcome to Level Up Hub!</h1>
+              <p class="text-gray-400 mb-8">Let's set up your main areas of focus. What are the three pillars of your study plan?</p>
+              
+              <form id="onboarding-form" class="space-y-4">
+                  <input type="text" id="category1" placeholder="Focus Area #1 (e.g., Data Structures)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
+                  <input type="text" id="category2" placeholder="Focus Area #2 (e.g., System Design)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
+                  <input type="text" id="category3" placeholder="Focus Area #3 (e.g., Company Applications)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
+                  
+                  <button type="submit" class="w-full px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
+                      Get Started
+                  </button>
+              </form>
+          </div>
+  </div>
 </body>
 </html>
