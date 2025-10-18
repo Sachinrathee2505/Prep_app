@@ -70,9 +70,6 @@
                     // USER IS LOGGED IN
                     // ========================================
                     console.log('✅ User authenticated:', user.email);
-                    if (signInBtn) {
-                        signInBtn.classList.add('hidden'); // ✅ hide the Google button
-                    }
     
                     try {
                         // Reference to user profile document
@@ -146,7 +143,9 @@
                                     });
 
                                     console.log('✅ User profile created:', focusAreas);
-
+                                    if (signInBtn) {
+                                        signInBtn.classList.add('hidden'); // ✅ hide the Google button
+                                    }
                                     // Hide modal
                                     onboardingModal.classList.add('hidden');
 
@@ -2332,3 +2331,4 @@ function createTaskCard(task) {
       }
 
     });
+
