@@ -70,7 +70,10 @@
                     // USER IS LOGGED IN
                     // ========================================
                     console.log('✅ User authenticated:', user.email);
-
+                    if (signInBtn) {
+                        signInBtn.classList.add('hidden'); // ✅ hide the Google button
+                    }
+    
                     try {
                         // Reference to user profile document
                         const userProfileRef = db.collection('users').doc(user.uid);
@@ -175,6 +178,7 @@
                                 }
                             });
 
+
                         } else {
                             // ========================================
                             // SCENARIO 2: EXISTING USER (Profile exists)
@@ -190,7 +194,7 @@
                                 document.getElementById('onboarding-modal').classList.remove('hidden');
                                 return;
                             }
-
+                            
                             // Show user info in header
                             const userInfo = document.getElementById('user-info');
                             const signInBtn = document.getElementById('sign-in-btn');
@@ -202,16 +206,9 @@
                                 userInfo.classList.add('flex');
                             }
                             if (signInBtn) {
-                                signInBtn.onclick = async () => {
-                                    try {
-                                        await auth.signInWithRedirect(provider); 
-                                    } catch (error) {
-                                        // This will handle any errors that might occur during the redirect process
-                                        console.error('Sign-in error:', error);
-                                        showToast('Sign-in failed. Please try again.', 'error');
-                                    }
-                                };
+                                signInBtn.classList.add('hidden'); 
                             }
+
                             if (addTaskBtn) addTaskBtn.classList.remove('hidden');
                             if (navButtons) {
                                 navButtons.classList.remove('hidden');
@@ -2333,4 +2330,5 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
+
     });
