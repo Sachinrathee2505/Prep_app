@@ -1,9 +1,12 @@
+import "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js";
+import "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js";
+import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
     document.addEventListener('DOMContentLoaded', () => {
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registered.'))
-            .catch(err => console.log('SW registration failed:', err));
+            .then(reg => console.log('✅SW registered.'))
+            .catch(err => console.log('❌SW registration failed:', err));
         });
       }
 
@@ -24,20 +27,28 @@
         return;
       }
 
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-        db.enablePersistence()
-          .catch((err) => {
-              if (err.code == 'failed-precondition') {
-                  console.warn('Firestore persistence failed: Multiple tabs open.');
-              } else if (err.code == 'unimplemented') {
-                  console.warn('Firestore persistence failed: Browser not supported.');
-              }
-            });
-      // Initialize the connection manager to handle the offline UI banner
-            const auth = firebase.auth();
-            const provider = new firebase.auth.GoogleAuthProvider();
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const db = firebase.firestore();
 
+        // Connect to emulators in development
+        if (window.location.hostname === "localhost") {
+            auth.useEmulator("http://localhost:9099");
+            db.useEmulator("localhost", 8080);
+            console.log("✅ Firebase emulators connected");
+        }
+
+        // Enable offline persistence with multi-tab support
+        db.enablePersistence({ synchronizeTabs: true })
+            .catch((err) => {
+                if (err.code === 'failed-precondition') {
+                    console.warn('⚠️ Persistence failed: Multiple tabs open');
+                } else if (err.code === 'unimplemented') {
+                    console.warn('⚠️ Persistence failed: Browser not supported');
+                }
+        });
       // =================================================================================
       // SECTION 2: GLOBAL STATE & UI ELEMENTS
       // =================================================================================
@@ -70,7 +81,7 @@
                     // USER IS LOGGED IN
                     // ========================================
                     console.log('✅ User authenticated:', user.email);
-    
+
                     try {
                         // Reference to user profile document
                         const userProfileRef = db.collection('users').doc(user.uid);
@@ -143,8 +154,9 @@
                                     });
 
                                     console.log('✅ User profile created:', focusAreas);
+                                    const signInBtn = document.getElementById('sign-in-btn');
                                     if (signInBtn) {
-                                        signInBtn.classList.add('hidden'); // ✅ hide the Google button
+                                        signInBtn.classList.add('hidden'); 
                                     }
                                     // Hide modal
                                     onboardingModal.classList.add('hidden');
@@ -177,7 +189,6 @@
                                 }
                             });
 
-
                         } else {
                             // ========================================
                             // SCENARIO 2: EXISTING USER (Profile exists)
@@ -193,7 +204,7 @@
                                 document.getElementById('onboarding-modal').classList.remove('hidden');
                                 return;
                             }
-                            
+
                             // Show user info in header
                             const userInfo = document.getElementById('user-info');
                             const signInBtn = document.getElementById('sign-in-btn');
@@ -204,10 +215,9 @@
                                 userInfo.classList.remove('hidden');
                                 userInfo.classList.add('flex');
                             }
-                            if (signInBtn) {
-                                signInBtn.classList.add('hidden'); 
-                            }
-
+                                    if (signInBtn) {
+                                        signInBtn.classList.add('hidden'); 
+                                    }
                             if (addTaskBtn) addTaskBtn.classList.remove('hidden');
                             if (navButtons) {
                                 navButtons.classList.remove('hidden');
@@ -287,11 +297,10 @@
       // =================================================================================
       // SECTION 4: APP INITIALIZATION & DATA LISTENERS
       // =================================================================================
-      function initializeAppForUser(user, userProfile) {
+      async function initializeAppForUser(user, userProfile) {
         // Store user's custom categories and profile in the global app state
         appState.userCategories = userProfile.focusAreas;
         appState.userProfile = userProfile;
-
         // Set up the real-time data listeners
         const tasksCollection = db.collection('users').doc(user.uid).collection('tasks');
         const skillsCollection = db.collection('users').doc(user.uid).collection('skills');
@@ -299,7 +308,7 @@
 
         // Initialize all helper classes
         const streakTracker = new StreakTracker(user.uid);
-        achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
+        const achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
         focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
         
         // Set up the real-time UI listener for the streak display
@@ -504,7 +513,7 @@
 
             playAchievementSound() {
                 // Only play if user has enabled sounds
-                const sound = new Audio('assets/achievement.mp3.mp3');
+                const sound = new Audio('assets/achievement.mp3');
                 sound.volume = 0.5;
                 const playPromise = sound.play();
                 if (playPromise) {
@@ -605,8 +614,23 @@ class FocusMode {
     this.isBreak = false;
     this.elapsed = 0;
     this.interval = null;
-    
-    // DOM elements (Your query selectors are correct)
+    this.motivations = [
+        "⚡ Deep work mode activated", 
+        "🎯 Stay focused, you're doing great!", 
+        "💪 Building momentum...", 
+        "🔥 In the zone!", 
+        "🚀 Making progress!", 
+        "✨ Keep going, almost there!"
+    ];
+
+    // ✅ Call init after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.init());
+    } else {
+        this.init();
+    }
+}    
+init() { // DOM elements 
     this.overlay = document.getElementById('focusMode');
     this.taskName = document.getElementById('focusTaskName');
     this.timerDisplay = document.getElementById('focusTimerDisplay');
@@ -621,13 +645,18 @@ class FocusMode {
     this.breakTimer = document.getElementById('breakTimer');
     this.skipBreakBtn = document.getElementById('skipBreakBtn');
     
-    this.motivations = ["⚡ Deep work mode activated", "🎯 Stay focused, you're doing great!", "💪 Building momentum...", "🔥 In the zone!", "🚀 Making progress!", "✨ Keep going, almost there!"];
+    // ✅ Add null checks
+    if (!this.overlay) {
+        console.warn('⚠️ Focus mode elements not found in DOM');
+        return;
+    }
     
-    this.init();
-  }
-  
-  init() {
-    // Preset buttons
+    this.content = this.overlay.querySelector('.focus-content');
+    
+    // Setup event listeners
+    this.setupEventListeners();
+}
+setupEventListeners() {    // Preset buttons
     this.presets.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const minutes = e.currentTarget.dataset.minutes;
@@ -662,7 +691,6 @@ class FocusMode {
     });
   }
 
-  // --- ENTRY POINT ---
   open(task) {
     // Restore session if one exists for this task
     if (this.restoreSession(task.id)) {
@@ -832,57 +860,94 @@ class FocusMode {
 }
     const connectionManager = new ConnectionManager();
 
-    // for heatmap 
-    async function renderActivityHeatmap(tasksCollection) {
-        const heatmap = document.getElementById('activity-heatmap');
-        if (!heatmap) return;
+        // for heatmap 
+        async function renderActivityHeatmap(tasksCollection) {
+            const heatmap = document.getElementById('activity-heatmap');
+            if (!heatmap) return;
 
-        // 1. Define the date range (e.g., last 180 days)
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 180);
+            try {
+                // 1. Define the date range (last 180 days)
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(endDate.getDate() - 180);
 
-        // 2. Fetch completed tasks within this range
-        const tasksSnapshot = await tasksCollection
-            .where('completedAt', '>=', startDate)
-            .where('completedAt', '<=', endDate)
-            .get();
+                // ✅ 2. Fetch ONLY completed tasks (safer query)
+                const tasksSnapshot = await tasksCollection
+                    .where('completed', '==', true)  // ✅ Only get completed tasks
+                    .get();
 
-        // 3. Process the data into a simple map of dates and counts
-        const completionData = {};
-        tasksSnapshot.forEach(doc => {
-            const task = doc.data();
-            // Normalize the date to a 'YYYY-MM-DD' string to use as a key
-            const dateString = task.completedAt.toDate().toISOString().split('T')[0];
-            completionData[dateString] = (completionData[dateString] || 0) + 1;
-        });
+                // ✅ 3. Process data with null checks
+                const completionData = {};
+                
+                tasksSnapshot.forEach(doc => {
+                    const task = doc.data();
+                    
+                    // ✅ Check if completedAt exists
+                    if (!task.completedAt) {
+                        console.warn('⚠️ Task has no completedAt date:', doc.id);
+                        return;  // Skip this task
+                    }
+                    
+                    // ✅ Convert Firestore Timestamp to Date
+                    let completedDate;
+                    try {
+                        completedDate = task.completedAt.toDate ? 
+                            task.completedAt.toDate() : 
+                            new Date(task.completedAt);
+                    } catch (error) {
+                        console.warn('⚠️ Invalid completedAt format:', doc.id, task.completedAt);
+                        return;  // Skip this task
+                    }
+                    
+                    // ✅ Filter by date range (do it here, not in query)
+                    if (completedDate >= startDate && completedDate <= endDate) {
+                        const dateString = completedDate.toISOString().split('T')[0];
+                        completionData[dateString] = (completionData[dateString] || 0) + 1;
+                    }
+                });
 
-        // 4. Generate the heatmap cells
-        heatmap.innerHTML = ''; // Clear previous render
-        for (let i = 0; i <= 180; i++) {
-            const currentDay = new Date(startDate);
-            currentDay.setDate(currentDay.getDate() + i);
-            const dateString = currentDay.toISOString().split('T')[0];
+                // 4. Generate the heatmap cells
+                heatmap.innerHTML = '';
+                
+                for (let i = 0; i <= 180; i++) {
+                    const currentDay = new Date(startDate);
+                    currentDay.setDate(currentDay.getDate() + i);
+                    const dateString = currentDay.toISOString().split('T')[0];
 
-            const count = completionData[dateString] || 0;
+                    const count = completionData[dateString] || 0;
 
-            // Determine the color level based on the count
-            let colorLevel = 0;
-            if (count > 0) colorLevel = 1;
-            if (count >= 3) colorLevel = 2;
-            if (count >= 5) colorLevel = 3;
-            if (count >= 8) colorLevel = 4;
+                    // Determine color level based on count
+                    let colorLevel = 0;
+                    if (count > 0) colorLevel = 1;
+                    if (count >= 3) colorLevel = 2;
+                    if (count >= 5) colorLevel = 3;
+                    if (count >= 8) colorLevel = 4;
 
-            const cell = document.createElement('div');
-            cell.className = 'day-cell';
-            if (colorLevel > 0) {
-                cell.classList.add(`color-level-${colorLevel}`);
+                    const cell = document.createElement('div');
+                    cell.className = 'day-cell';
+                    
+                    if (colorLevel > 0) {
+                        cell.classList.add(`color-level-${colorLevel}`);
+                    }
+                    
+                    cell.title = `${count} task${count !== 1 ? 's' : ''} completed on ${currentDay.toLocaleDateString()}`;
+                    heatmap.appendChild(cell);
+                }
+                
+                console.log('✅ Activity heatmap rendered successfully');
+                
+            } catch (error) {
+                console.error('❌ Error rendering activity heatmap:', error);
+                
+                // ✅ Show user-friendly error message
+                heatmap.innerHTML = `
+                    <div class="text-center text-gray-400 py-4">
+                        <p>Unable to load activity data</p>
+                        <p class="text-xs mt-2">${error.message}</p>
+                    </div>
+                `;
             }
-            // Add a tooltip to show the date and count on hover
-            cell.title = `${count} tasks completed on ${currentDay.toLocaleDateString()}`;
-            heatmap.appendChild(cell);
         }
-    }
         class AchievementSystem {
             constructor({ db, uid, confetti, tasksCollection, streakTracker }) {
                 this.db = db;
@@ -1177,11 +1242,11 @@ class FocusMode {
                             .where('completed', '==', true)
                             .get();
 
-                        achievementSystem.checkAchievements('task_complete', { 
+                        await achievementSystem.checkAchievements('task_complete', { 
                             totalCompleted: completedTasksSnap.size,
                             category: task.category 
                         });
-                        achievementSystem.checkAchievements('streak_update', { 
+                        await achievementSystem.checkAchievements('streak_update', { 
                             streak: stats.currentStreak 
                         });
 
@@ -1211,8 +1276,6 @@ class FocusMode {
 
                     // Refresh UI
                     renderDashboard();
-                    if (typeof updateStats === 'function') updateStats();
-
                 } catch (error) {
                     console.error('❌ Error updating task:', error);
                     // Revert checkbox state on error
@@ -1260,10 +1323,10 @@ class FocusMode {
                     console.error('❌ Error updating subtask:', error);
                     e.target.checked = !e.target.checked; // Revert
                 }
-                return; // Stop here
+                return; 
             }
 
-            // ✅ DELETE BUTTON - Optimistic Update with Undo
+            // ✅ DELETE BUTTON 
             if (e.target.closest('.delete-btn')) {
                 playSound('assets/delete.mp3');
 
@@ -1308,7 +1371,7 @@ class FocusMode {
                     console.log("✅ Task deletion undone");
                 });
                 
-                return; // Stop here
+                return;
             }
 
             // ✅ TIMER BUTTON - Start/Stop
@@ -1609,7 +1672,6 @@ function add3DTiltEffect() {
 
         cleanupTimers();
 
-        // Dynamically create the column HTML from the user's categories
         const columnsHTML = appState.userCategories.map(cat => `
             <div id="col-${cat.id}" class="bg-gray-800 rounded-lg p-4">
                 <h2 class="text-lg font-bold mb-4" style="color: ${cat.color};">${cat.icon || '🎯'} ${cat.name}</h2>
@@ -1617,7 +1679,6 @@ function add3DTiltEffect() {
             </div>
         `).join('');
 
-        // Set the main content HTML ONCE
         mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-${appState.userCategories.length} gap-6">${columnsHTML}</div>`;
         
         // Filter and prepare tasks to render
@@ -1658,12 +1719,21 @@ function add3DTiltEffect() {
     }
 
 function cleanupTimers() {
+    // Clear task timers
     if (appState.timers) {
         Object.values(appState.timers).forEach(timerId => {
             if (timerId) clearInterval(timerId);
         });
         appState.timers = {};
     }
+    
+    // ✅ Clear focus mode timer if exists
+    if (focusMode && focusMode.interval) {
+        clearInterval(focusMode.interval);
+        focusMode.interval = null;
+    }
+    
+    console.log('✅ All timers cleaned up');
 }
 
 function updateAlertBanner() {
@@ -1728,10 +1798,15 @@ function createTaskCard(task) {
         cardClasses += ' priority-high';
     }
     card.className = cardClasses;
-        card.dataset.id = task.id;
+    card.dataset.id = task.id;
 
     const totalTime = task.totalTimeLogged || 0;
     const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
+
+    const categoryObj = appState.userCategories?.find(c => c.id === task.category);
+    const categoryName = categoryObj ? categoryObj.name : "Uncategorized";
+    const categoryIcon = categoryObj ? categoryObj.icon : "📋";
+
     let projectHTML = '';
 
     if (task.type === 'project' && task.subtasks) {
@@ -1744,6 +1819,11 @@ function createTaskCard(task) {
         <div class="card-transform-layer"></div>
 
         <div class="card-content relative z-10 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
+
+            <div class="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                <span>${categoryIcon}</span> ${categoryName}
+            </div>
+
             <div class="flex justify-between items-start">
                 <div class="flex-grow">
                     <h3 class="font-bold">${task.title}</h3>
@@ -1771,8 +1851,10 @@ function createTaskCard(task) {
                 <button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
             </div>
         </div>`;
+
     return card;
 }
+
       function renderSkillsDashboard() {
         mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Tree 🌳</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
         const grid = document.getElementById('skills-grid');
@@ -1888,7 +1970,15 @@ function createTaskCard(task) {
         };
       }
       async function renderInsightsDashboard(timeLogsCollection, tasksCollection) {
-          try {
+           try {
+             const userProfile = appState.userProfile;
+             const userId = auth.currentUser?.uid;
+
+             if (!userProfile || !userId) {
+                showError('User profile not loaded');
+                return;
+             }
+             console.log('🎯 YOUR FOCUS AREAS:', JSON.stringify(userProfile.focusAreas, null, 2));
               // Set up initial UI
               mainContent.innerHTML = `
                   <div class="bg-gray-800 rounded-lg p-6">
@@ -1907,51 +1997,90 @@ function createTaskCard(task) {
               `;
 
               // Fetch and process time logs
-              const timeData = await fetchTimeData(timeLogsCollection);
+              const timeData = await fetchTimeData(userId, userProfile);
               
               // Create and render chart
-              await createChart(timeData);
+              await createChart(timeData, userProfile);
               renderActivityHeatmap(tasksCollection);
               
-          } catch (error) {
-              console.error('Error rendering insights dashboard:', error);
-              showError('Failed to load insights dashboard. Please try again later.');
-          }
-      }
+            } 
+            catch (error) {
+                console.error('Error rendering insights dashboard:', error);
+                showError('Failed to load insights dashboard. Please try again later.');
+            }
+        }
 
-        async function fetchTimeData(timeLogsCollection) {
-            const timeData = {
-                fullstack: 0,
-                mitx: 0,
-                nvidia: 0
-            };
+        async function fetchTimeData(userId, userProfile) {
+            // ✅ Get focus areas from userProfile
+            const focusAreas = userProfile?.focusAreas || [];
+
+            if (!Array.isArray(focusAreas) || focusAreas.length === 0) {
+                console.warn("⚠️ No focus areas found. Returning empty dataset.");
+                return {};
+            }
+
+            const timeData = {};
+
+            // ✅ Initialize all categories with 0 time
+            focusAreas.forEach(area => {
+                timeData[area.id] = 0;
+            });
+
+            // ✅ CREATE MAPPING: Old category names → New focus area IDs
+            const categoryMapping = createCategoryMapping(focusAreas);
+            console.log('📋 Category mapping:', categoryMapping);
 
             try {
-                const logsSnapshot = await timeLogsCollection.get();
-                
+                // ✅ Fetch from user's subcollection
+                const logsSnapshot = await db.collection('users')
+                    .doc(userId)
+                    .collection('timeLogs')
+                    .get();
+
                 logsSnapshot.forEach(doc => {
                     const log = doc.data();
-                    
-                    // Validate log data
-                    if (!log.category || !Number.isFinite(log.duration)) {
-                        console.warn('Invalid log data:', doc.id, log);
-                        return;
+
+                    // Get category from log (might be old or new format)
+                    let catId = log.categoryId || log.category;
+                    const duration = Number(log.duration) || 0;
+
+                    // ✅ Try to map old category names to new IDs
+                    if (catId && !timeData.hasOwnProperty(catId)) {
+                        const mappedId = categoryMapping[catId.toLowerCase()];
+                        if (mappedId) {
+                            console.log(`🔄 Mapped old category "${catId}" → "${mappedId}"`);
+                            catId = mappedId;
+                        }
                     }
 
-                    // Normalize category name and add duration
-                    const category = log.category.toLowerCase().replace(/ & /g, '');
-                    if (timeData.hasOwnProperty(category)) {
-                        timeData[category] += Math.max(0, log.duration);
+                    // Add duration to the correct category
+                    if (catId && timeData.hasOwnProperty(catId)) {
+                        timeData[catId] += Math.max(0, duration);
+                    } else {
+                        console.warn('⚠️ Skipping unknown category:', catId, 'in log:', doc.id);
                     }
                 });
 
+                console.log('✅ Final Processed Time Data:', timeData);
                 return timeData;
+
             } catch (error) {
+                console.error('❌ Error fetching time data:', error);
                 throw new Error(`Failed to fetch time logs: ${error.message}`);
             }
         }
 
-        async function createChart(timeData) {
+        function createCategoryMapping(focusAreas) {
+            // Direct mapping: assumes focus_1, focus_2, focus_3 exist
+            return {
+                'fullstack': 'focus_1',   // Old fullstack → first focus area
+                'mitx': 'focus_2',        // Old mitx → second focus area
+                'nvidia': 'focus_3'       // Old nvidia → third focus area
+            };
+        }
+
+
+        async function createChart(timeData, userProfile) {
             const canvas = document.getElementById('timeAllocationChart');
             if (!canvas) {
                 throw new Error('Canvas element not found');
@@ -1962,28 +2091,45 @@ function createTaskCard(task) {
                 throw new Error('Failed to get canvas context');
             }
 
+            // ✅ Resolve categories from userProfile
+            const focusAreas = userProfile?.focusAreas || [];
+            if (focusAreas.length === 0) {
+                throw new Error('No focus areas found in user profile');
+            }
+
+            // ✅ Generate labels & data
+            const labels = focusAreas.map(area => area.name);
+            
+            const data = focusAreas.map(area => {
+                let raw = timeData[area.id] || 0;
+
+                // Handle string format like "2h 30m"
+                if (typeof raw === "string") {
+                    return convertToMinutes(raw);
+                }
+
+                // Handle numeric seconds
+                if (typeof raw === "number") {
+                    return Math.round(raw / 60);  // Convert seconds to minutes
+                }
+
+                return 0;
+            });
+
+            // ✅ Color setup
+            const backgroundColor = focusAreas.map(area => hexToRgba(area.color || '#6B7280', 0.7));
+            const borderColor = focusAreas.map(area => area.color || '#6B7280');
+
             const chartConfig = {
                 type: 'doughnut',
                 data: {
-                    labels: ['Full-Stack & Projects', 'MITx Machine Learning', 'NVIDIA & AI Practice'],
+                    labels: labels,
                     datasets: [{
                         label: 'Time Spent (in minutes)',
-                        data: [
-                            convertToMinutes(timeData.fullstack),
-                            convertToMinutes(timeData.mitx),
-                            convertToMinutes(timeData.nvidia)
-                        ],
-                        backgroundColor: [
-                            'rgba(52, 211, 153, 0.7)',  // Green
-                            'rgba(96, 165, 250, 0.7)',  // Blue
-                            'rgba(192, 132, 252, 0.7)'  // Purple
-                        ],
-                        borderColor: [
-                            '#10B981',
-                            '#3B82F6',
-                            '#A855F7'
-                        ],
-                        borderWidth: 1
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        borderWidth: 2
                     }]
                 },
                 options: {
@@ -1991,18 +2137,18 @@ function createTaskCard(task) {
                     plugins: {
                         legend: {
                             position: 'top',
-                            labels: {
-                                color: '#d1d5db'
+                            labels: { 
+                                color: '#d1d5db',
+                                font: { size: 12 }
                             }
-                        },
-                        title: {
-                            display: false
                         },
                         tooltip: {
                             callbacks: {
                                 label: (context) => {
                                     const minutes = context.raw;
-                                    return `${minutes} minutes (${formatHours(minutes)})`;
+                                    const hours = Math.floor(minutes / 60);
+                                    const mins = minutes % 60;
+                                    return `${hours}h ${mins}m (${minutes} total minutes)`;
                                 }
                             }
                         }
@@ -2010,20 +2156,48 @@ function createTaskCard(task) {
                 }
             };
 
+            // ✅ Destroy previous chart instance if exists
+            if (window.timeChartInstance) {
+                window.timeChartInstance.destroy();
+            }
+
             try {
-                return new Chart(ctx, chartConfig);
+                window.timeChartInstance = new Chart(ctx, chartConfig);
+                return window.timeChartInstance;
             } catch (error) {
                 throw new Error(`Failed to create chart: ${error.message}`);
             }
         }
 
-        function convertToMinutes(seconds) {
+
+        // 🔥 Helper function to convert hex to rgba
+        function hexToRgba(hex, alpha = 1) {
+            // Remove # if present
+            hex = hex.replace('#', '');
+            
+            // Parse hex values
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        // ✅ Convert seconds to minutes
+        function convertSecondsToMinutes(seconds) {
             return Math.round(Math.max(0, seconds) / 60);
         }
 
+        // ✅ Format minutes as "X.X hours"
         function formatHours(minutes) {
             const hours = (minutes / 60).toFixed(1);
             return `${hours} hours`;
+        }
+
+        // ✅ Format seconds as "Xh Ym"
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
         }
 
         function showError(message) {
@@ -2036,6 +2210,13 @@ function createTaskCard(task) {
 
         async function showWeeklyReportModal(timeLogsCollection, tasksCollection) {
             const { startOfWeek, endOfWeek } = getWeekRange(new Date());
+            
+            // ✅ Get user profile for categories
+            const userProfile = appState.userProfile;
+            if (!userProfile || !userProfile.focusAreas) {
+                showToast('User profile not loaded', 'error');
+                return;
+            }
             
             // Fetch time logs
             const logsSnapshot = await timeLogsCollection
@@ -2050,23 +2231,43 @@ function createTaskCard(task) {
                 .where('completedAt', '<=', endOfWeek)
                 .get();
             
-            // Process time data
-            const weeklyData = { fullstack: 0, mitx: 0, nvidia: 0 };
+            // ✅ Initialize weeklyData dynamically from user's focus areas
+            const weeklyData = {};
+            userProfile.focusAreas.forEach(area => {
+                weeklyData[area.id] = 0;
+            });
+            
             const dailyData = {};
+            
+            // ✅ Use category mapping for old logs
+            const categoryMapping = createCategoryMapping(userProfile.focusAreas);
             
             logsSnapshot.forEach(doc => {
                 const log = doc.data();
-                if (log.category && typeof log.category === 'string') {
-                    const category = log.category.toLowerCase();
-                    if (weeklyData[category] !== undefined) {
-                        weeklyData[category] += Number(log.duration) || 0;
-                    }
-                    
-                    // Track daily time
-                    const day = log.timestamp.toDate().toLocaleDateString('en-US', { weekday: 'short' });
-                    if (!dailyData[day]) dailyData[day] = 0;
-                    dailyData[day] += Number(log.duration) || 0;
+                
+                // ✅ Get category with mapping support
+                let catId = log.categoryId || log.category;
+                
+                // Try to map old categories
+                if (catId && !weeklyData.hasOwnProperty(catId)) {
+                    const mappedId = categoryMapping[catId.toLowerCase()];
+                    if (mappedId) catId = mappedId;
                 }
+                
+                if (catId && weeklyData.hasOwnProperty(catId)) {
+                    weeklyData[catId] += Number(log.duration) || 0;
+                }
+                
+                // Track daily time
+                const logDate = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+                const dayIndex = logDate.getDay();  // 0 = Sunday, 1 = Monday, etc.
+                
+                // ✅ Map to consistent day names
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const day = dayNames[dayIndex];
+                
+                if (!dailyData[day]) dailyData[day] = 0;
+                dailyData[day] += Number(log.duration) || 0;
             });
 
             // Calculate statistics
@@ -2116,62 +2317,95 @@ function createTaskCard(task) {
                             </div>
                         </div>
 
-                        <!-- Category Breakdown -->
-                        <div class="space-y-4 mb-6">
-                            <h3 class="text-lg font-semibold">Time by Category</h3>
-                            
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <h4 class="font-medium text-green-400">Full-Stack & Projects</h4>
-                                        <span class="font-mono text-sm">${formatTime(weeklyData.fullstack)} (${formatPercentage(weeklyData.fullstack, totalTime)}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-700 rounded-full h-2">
-                                        <div class="bg-green-400 h-2 rounded-full transition-all duration-500" 
-                                            style="width: ${formatPercentage(weeklyData.fullstack, totalTime)}%"></div>
-                                    </div>
-                                </div>
+                        <div class="space-y-3">
+                            ${userProfile.focusAreas.map(area => {
+                                const areaTime = weeklyData[area.id] || 0;
+                                const percentage = formatPercentage(areaTime, totalTime);
                                 
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <h4 class="font-medium text-blue-400">MITx Machine Learning</h4>
-                                        <span class="font-mono text-sm">${formatTime(weeklyData.mitx)} (${formatPercentage(weeklyData.mitx, totalTime)}%)</span>
+                                return `
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <h4 class="font-medium" style="color: ${area.color}">
+                                                ${area.icon} ${area.name}
+                                            </h4>
+                                            <span class="font-mono text-sm">
+                                                ${formatTime(areaTime)} (${percentage}%)
+                                            </span>
+                                        </div>
+                                        <div class="w-full bg-gray-700 rounded-full h-2">
+                                            <div class="h-2 rounded-full transition-all duration-500" 
+                                                style="width: ${percentage}%; background-color: ${area.color}">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="w-full bg-gray-700 rounded-full h-2">
-                                        <div class="bg-blue-400 h-2 rounded-full transition-all duration-500" 
-                                            style="width: ${formatPercentage(weeklyData.mitx, totalTime)}%"></div>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <h4 class="font-medium text-purple-400">NVIDIA & AI Practice</h4>
-                                        <span class="font-mono text-sm">${formatTime(weeklyData.nvidia)} (${formatPercentage(weeklyData.nvidia, totalTime)}%)</span>
-                                    </div>
-                                    <div class="w-full bg-gray-700 rounded-full h-2">
-                                        <div class="bg-purple-400 h-2 rounded-full transition-all duration-500" 
-                                            style="width: ${formatPercentage(weeklyData.nvidia, totalTime)}%"></div>
-                                    </div>
-                                </div>
-                            </div>
+                                `;
+                            }).join('')}
                         </div>
 
                         <!-- Daily Activity Chart -->
-                        <div class="mb-6">
-                            <h3 class="text-lg font-semibold mb-3">Daily Activity</h3>
-                            <div class="flex justify-between items-end h-32">
-                                ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+                        <div class="mb-6 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                            <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                                <span>📊</span> Daily Activity
+                            </h3>
+                            
+                            <!-- ✅ White background chart area for maximum contrast -->
+                            <div class="flex justify-between items-end h-48 gap-3 px-4 py-3 bg-gray-950 rounded-lg">
+                                ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
                                     const dayTime = dailyData[day] || 0;
-                                    const height = totalTime > 0 ? (dayTime / Math.max(...Object.values(dailyData))) * 100 : 0;
+                                    const allDayValues = Object.values(dailyData).filter(v => v > 0);
+                                    const maxDayTime = allDayValues.length > 0 ? Math.max(...allDayValues) : 1;
+                                    const heightPercent = Math.round((dayTime / maxDayTime) * 100);
+                                    const displayHeight = dayTime > 0 ? Math.max(heightPercent, 12) : 0;
+                                    const today = new Date().getDay();
+                                    const isToday = today === index;
+                                    
                                     return `
-                                        <div class="flex-1 flex flex-col items-center">
-                                            <div class="w-full max-w-12 bg-cyan-500 rounded-t transition-all duration-500" 
-                                                style="height: ${height}%"
-                                                title="${formatTime(dayTime)}"></div>
-                                            <span class="text-xs text-gray-400 mt-1">${day}</span>
+                                        <div class="flex-1 flex flex-col items-center justify-end h-full group relative">
+                                            <!-- ✅ SUPER VISIBLE Bar -->
+                                            <div class="w-full rounded-t-xl transition-all duration-300 hover:scale-110 relative overflow-hidden
+                                                ${dayTime > 0 
+                                                    ? 'bg-gradient-to-t from-cyan-600 via-cyan-500 to-cyan-400 shadow-2xl shadow-cyan-500/60 ring-2 ring-cyan-400/20' 
+                                                    : 'bg-gray-800 border border-gray-700'
+                                                }" 
+                                                style="height: ${displayHeight}%; min-height: ${dayTime > 0 ? '12px' : '4px'};">
+                                                
+                                                <!-- Animated shimmer effect -->
+                                                ${dayTime > 0 ? `
+                                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
+                                                        -skew-x-12 group-hover:animate-shimmer"></div>
+                                                ` : ''}
+                                            </div>
+                                            
+                                            <!-- Day Label -->
+                                            <div class="text-center mt-3">
+                                                <span class="text-sm font-bold transition-all duration-300
+                                                    ${isToday ? 'text-cyan-400 scale-110' : dayTime > 0 ? 'text-gray-300' : 'text-gray-600'}">
+                                                    ${day}
+                                                </span>
+                                                ${isToday ? '<div class="w-1 h-1 bg-cyan-400 rounded-full mx-auto mt-1"></div>' : ''}
+                                            </div>
+                                            
+                                            <!-- Tooltip -->
+                                            <div class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
+                                                transition-opacity bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-xl 
+                                                whitespace-nowrap z-10 border border-cyan-500/30">
+                                                <div class="font-mono text-cyan-400">${formatTime(dayTime)}</div>
+                                                <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 
+                                                    w-2 h-2 bg-gray-900 rotate-45 border-r border-b border-cyan-500/30"></div>
+                                            </div>
                                         </div>
                                     `;
                                 }).join('')}
+                            </div>
+                            
+                            <!-- Stats Summary -->
+                            <div class="mt-4 flex justify-between items-center text-sm">
+                                <div class="text-gray-400">
+                                    Total: <span class="text-white font-mono">${formatTime(Object.values(dailyData).reduce((a, b) => a + b, 0))}</span>
+                                </div>
+                                <div class="text-gray-400">
+                                    Average: <span class="text-white font-mono">${formatTime(Math.round(Object.values(dailyData).reduce((a, b) => a + b, 0) / 7))}</span>/day
+                                </div>
                             </div>
                         </div>
 
@@ -2281,13 +2515,14 @@ function createTaskCard(task) {
             toastContainer.appendChild(toast);
         }
 
-        function getCategoryName(category) {
-            const names = {
-                'fullstack': 'Full-Stack & Projects',
-                'mitx': 'MITx Machine Learning',
-                'nvidia': 'NVIDIA & AI Practice'
-            };
-            return names[category] || category;
+        // ✅ Dynamic category name lookup
+        function getCategoryName(categoryId) {
+            const userProfile = appState.userProfile;
+            if (!userProfile || !userProfile.focusAreas) {
+                return categoryId;
+            }
+            const category = userProfile.focusAreas.find(area => area.id === categoryId);
+            return category ? category.name : categoryId;
         }
 
         async function exportWeeklyReport() {
@@ -2329,6 +2564,4 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
-
     });
-
