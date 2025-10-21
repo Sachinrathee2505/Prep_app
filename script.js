@@ -2562,7 +2562,6 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
-
-    };
 }
+
 
