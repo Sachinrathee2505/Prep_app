@@ -2563,5 +2563,6 @@ function createTaskCard(task) {
         return { startOfWeek, endOfWeek };
       }
 
-    });
+    };
 }
+
