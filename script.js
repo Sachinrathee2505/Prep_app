@@ -1,7 +1,7 @@
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js";
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js";
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
-    document.addEventListener('DOMContentLoaded', () => {
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('sw.js')
@@ -24,8 +24,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
 
       if (!firebaseConfig.apiKey) {
         document.getElementById('main-content').innerHTML = `<div class="text-center p-8 bg-red-900 rounded-lg"><h2 class="text-2xl font-bold text-red-200">Firebase Not Configured!</h2><p class="mt-2 text-red-300">Please paste your Firebase config object in index.html to get started.</p></div>`;
-        return;
-      }
+      }else{
 
         // Initialize Firebase
         const app = firebase.initializeApp(firebaseConfig);
@@ -2071,7 +2070,6 @@ function createTaskCard(task) {
         }
 
         function createCategoryMapping(focusAreas) {
-            // Direct mapping: assumes focus_1, focus_2, focus_3 exist
             return {
                 'fullstack': 'focus_1',   // Old fullstack → first focus area
                 'mitx': 'focus_2',        // Old mitx → second focus area
@@ -2564,4 +2562,6 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
+
     });
+}
