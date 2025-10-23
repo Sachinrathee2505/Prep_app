@@ -1,7 +1,6 @@
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js";
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js";
 import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
-
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('sw.js')
@@ -24,7 +23,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
 
       if (!firebaseConfig.apiKey) {
         document.getElementById('main-content').innerHTML = `<div class="text-center p-8 bg-red-900 rounded-lg"><h2 class="text-2xl font-bold text-red-200">Firebase Not Configured!</h2><p class="mt-2 text-red-300">Please paste your Firebase config object in index.html to get started.</p></div>`;
-      }else{
+      }else {
 
         // Initialize Firebase
         const app = firebase.initializeApp(firebaseConfig);
@@ -859,86 +858,255 @@ setupEventListeners() {    // Preset buttons
 }
     const connectionManager = new ConnectionManager();
 
-        // for heatmap 
         async function renderActivityHeatmap(tasksCollection) {
             const heatmap = document.getElementById('activity-heatmap');
             if (!heatmap) return;
 
             try {
-                // 1. Define the date range (last 180 days)
+                // 1. Calculate responsive date range
                 const endDate = new Date();
                 const startDate = new Date();
-                startDate.setDate(endDate.getDate() - 180);
+                
+                // Adjust days based on screen size
+                const isMobile = window.innerWidth < 640;
+                const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
+                const daysToShow = isMobile ? 90 : isTablet ? 120 : 180;
+                
+                startDate.setDate(endDate.getDate() - daysToShow);
 
-                // ✅ 2. Fetch ONLY completed tasks (safer query)
+                // 2. Fetch completed tasks
                 const tasksSnapshot = await tasksCollection
-                    .where('completed', '==', true)  // ✅ Only get completed tasks
+                    .where('completed', '==', true)
                     .get();
 
-                // ✅ 3. Process data with null checks
+                // 3. Process data with null checks
                 const completionData = {};
                 
                 tasksSnapshot.forEach(doc => {
                     const task = doc.data();
                     
-                    // ✅ Check if completedAt exists
                     if (!task.completedAt) {
                         console.warn('⚠️ Task has no completedAt date:', doc.id);
-                        return;  // Skip this task
+                        return;
                     }
                     
-                    // ✅ Convert Firestore Timestamp to Date
                     let completedDate;
                     try {
                         completedDate = task.completedAt.toDate ? 
                             task.completedAt.toDate() : 
                             new Date(task.completedAt);
                     } catch (error) {
-                        console.warn('⚠️ Invalid completedAt format:', doc.id, task.completedAt);
-                        return;  // Skip this task
+                        console.warn('⚠️ Invalid completedAt format:', doc.id);
+                        return;
                     }
                     
-                    // ✅ Filter by date range (do it here, not in query)
                     if (completedDate >= startDate && completedDate <= endDate) {
                         const dateString = completedDate.toISOString().split('T')[0];
                         completionData[dateString] = (completionData[dateString] || 0) + 1;
                     }
                 });
 
-                // 4. Generate the heatmap cells
+                // 4. Build week-based grid structure
                 heatmap.innerHTML = '';
                 
-                for (let i = 0; i <= 180; i++) {
-                    const currentDay = new Date(startDate);
-                    currentDay.setDate(currentDay.getDate() + i);
-                    const dateString = currentDay.toISOString().split('T')[0];
-
-                    const count = completionData[dateString] || 0;
-
-                    // Determine color level based on count
-                    let colorLevel = 0;
-                    if (count > 0) colorLevel = 1;
-                    if (count >= 3) colorLevel = 2;
-                    if (count >= 5) colorLevel = 3;
-                    if (count >= 8) colorLevel = 4;
-
-                    const cell = document.createElement('div');
-                    cell.className = 'day-cell';
-                    
-                    if (colorLevel > 0) {
-                        cell.classList.add(`color-level-${colorLevel}`);
-                    }
-                    
-                    cell.title = `${count} task${count !== 1 ? 's' : ''} completed on ${currentDay.toLocaleDateString()}`;
-                    heatmap.appendChild(cell);
+                // Add wrapper for scrolling
+                const wrapper = document.createElement('div');
+                wrapper.className = 'heatmap-wrapper';
+                
+                // Add container for better layout control
+                const container = document.createElement('div');
+                container.className = 'heatmap-container';
+                
+                // Create tooltip element (persistent, hidden by default)
+                const tooltip = document.createElement('div');
+                tooltip.className = 'heatmap-tooltip';
+                tooltip.style.display = 'none';
+                document.body.appendChild(tooltip); // Append to body for proper positioning
+                
+                // Calculate weeks - start from first Sunday
+                const weeks = [];
+                let currentDate = new Date(startDate);
+                
+                // Move to the previous Sunday
+                while (currentDate.getDay() !== 0) {
+                    currentDate.setDate(currentDate.getDate() - 1);
                 }
                 
-                console.log('✅ Activity heatmap rendered successfully');
+                const adjustedStartDate = new Date(currentDate);
+                
+                // Calculate total days needed (until we pass endDate)
+                while (currentDate <= endDate) {
+                    const week = [];
+                    for (let i = 0; i < 7; i++) {
+                        const dateString = currentDate.toISOString().split('T')[0];
+                        const count = completionData[dateString] || 0;
+                        const isInRange = currentDate >= startDate && currentDate <= endDate;
+                        
+                        week.push({
+                            date: new Date(currentDate),
+                            dateString,
+                            count,
+                            isInRange,
+                            dayOfWeek: currentDate.getDay()
+                        });
+                        
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    weeks.push(week);
+                }
+
+                // 5. Render day labels (Sun-Sat) - Fixed position
+                const dayLabels = document.createElement('div');
+                dayLabels.className = 'day-labels';
+                const days = isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                days.forEach(day => {
+                    const label = document.createElement('span');
+                    label.className = 'day-label';
+                    label.textContent = day;
+                    dayLabels.appendChild(label);
+                });
+                container.appendChild(dayLabels);
+
+                // 6. Create grid content wrapper
+                const gridWrapper = document.createElement('div');
+                gridWrapper.className = 'grid-wrapper';
+
+                // 7. Render month labels
+                const monthLabels = document.createElement('div');
+                monthLabels.className = 'month-labels';
+                monthLabels.style.gridTemplateColumns = `repeat(${weeks.length}, 1fr)`;
+                
+                let lastMonth = -1;
+                
+                weeks.forEach((week, weekIndex) => {
+                    const firstDay = week[0].date;
+                    const month = firstDay.getMonth();
+                    
+                    // Show month label at the start of each month
+                    if (month !== lastMonth && week[0].isInRange) {
+                        const label = document.createElement('span');
+                        label.className = 'month-label';
+                        label.textContent = firstDay.toLocaleDateString('en-US', { month: 'short' });
+                        label.style.gridColumn = `${weekIndex + 1}`;
+                        monthLabels.appendChild(label);
+                        lastMonth = month;
+                    }
+                });
+                
+                gridWrapper.appendChild(monthLabels);
+
+                // 8. Render grid
+                const grid = document.createElement('div');
+                grid.className = 'heatmap-grid';
+                grid.style.gridTemplateColumns = `repeat(${weeks.length}, 1fr)`;
+                
+                // Create columns for each week
+                weeks.forEach(week => {
+                    const weekColumn = document.createElement('div');
+                    weekColumn.className = 'week-column';
+                    
+                    // Add all 7 days
+                    week.forEach(day => {
+                        const count = day.count;
+                        let colorLevel = 0;
+                        if (count > 0) colorLevel = 1;
+                        if (count >= 3) colorLevel = 2;
+                        if (count >= 5) colorLevel = 3;
+                        if (count >= 8) colorLevel = 4;
+
+                        const cell = document.createElement('div');
+                        cell.className = 'day-cell';
+                        
+                        // Mark cells outside the range as inactive
+                        if (!day.isInRange) {
+                            cell.classList.add('inactive');
+                        } else if (colorLevel > 0) {
+                            cell.classList.add(`color-level-${colorLevel}`);
+                        }
+                        
+                        // Enhanced tooltip content
+                        const dateStr = day.date.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                        
+                        const tooltipText = !day.isInRange ? dateStr :
+                            count === 0 ? `No tasks on ${dateStr}` : 
+                            `${count} task${count !== 1 ? 's' : ''} completed on ${dateStr}`;
+                        
+                        // Desktop hover - show tooltip
+                        cell.addEventListener('mouseenter', (e) => {
+                            tooltip.textContent = tooltipText;
+                            tooltip.style.display = 'block';
+                            
+                            // Position tooltip above the cell
+                            const rect = cell.getBoundingClientRect();
+                            tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+                            tooltip.style.top = `${rect.top - 10}px`;
+                        });
+                        
+                        cell.addEventListener('mouseleave', () => {
+                            tooltip.style.display = 'none';
+                        });
+                        
+                        // Mobile tap - show temporary tooltip
+                        cell.addEventListener('click', (e) => {
+                            if (isMobile) {
+                                tooltip.textContent = tooltipText;
+                                tooltip.style.display = 'block';
+                                
+                                const rect = cell.getBoundingClientRect();
+                                tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+                                tooltip.style.top = `${rect.top - 10}px`;
+                                
+                                setTimeout(() => {
+                                    tooltip.style.display = 'none';
+                                }, 2000);
+                            }
+                        });
+                        
+                        weekColumn.appendChild(cell);
+                    });
+                    
+                    grid.appendChild(weekColumn);
+                });
+                
+                gridWrapper.appendChild(grid);
+                container.appendChild(gridWrapper);
+
+                // 9. Add legend
+                const legend = document.createElement('div');
+                legend.className = 'heatmap-legend';
+                legend.innerHTML = `
+                    <span class="legend-label">${isMobile ? 'Less' : 'Activity:'}</span>
+                    <div class="legend-item">
+                        <div class="day-cell"></div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="day-cell color-level-1"></div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="day-cell color-level-2"></div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="day-cell color-level-3"></div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="day-cell color-level-4"></div>
+                    </div>
+                    <span class="legend-label">${isMobile ? 'More' : ''}</span>
+                `;
+                container.appendChild(legend);
+                
+                wrapper.appendChild(container);
+                heatmap.appendChild(wrapper);
+                
+                console.log(`✅ Activity heatmap rendered (${daysToShow} days, ${weeks.length} weeks)`);
                 
             } catch (error) {
                 console.error('❌ Error rendering activity heatmap:', error);
-                
-                // ✅ Show user-friendly error message
                 heatmap.innerHTML = `
                     <div class="text-center text-gray-400 py-4">
                         <p>Unable to load activity data</p>
@@ -947,6 +1115,17 @@ setupEventListeners() {    // Preset buttons
                 `;
             }
         }
+
+        // Re-render on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const tasksCollection = db.collection('users').doc(auth.currentUser?.uid).collection('tasks');
+                renderActivityHeatmap(tasksCollection);
+            }, 300);
+        });
+        
         class AchievementSystem {
             constructor({ db, uid, confetti, tasksCollection, streakTracker }) {
                 this.db = db;
@@ -2070,6 +2249,7 @@ function createTaskCard(task) {
         }
 
         function createCategoryMapping(focusAreas) {
+            // Direct mapping: assumes focus_1, focus_2, focus_3 exist
             return {
                 'fullstack': 'focus_1',   // Old fullstack → first focus area
                 'mitx': 'focus_2',        // Old mitx → second focus area
@@ -2562,6 +2742,4 @@ function createTaskCard(task) {
         endOfWeek.setHours(23, 59, 59, 999);
         return { startOfWeek, endOfWeek };
       }
-}
-
-
+    }
