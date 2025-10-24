@@ -725,3 +725,30 @@
     .animate-shimmer {
         animation: shimmer 2s infinite;
     }
+    /* Mobile menu transitions */
+#mobile-menu {
+    transition: transform 0.3s ease-in-out;
+}
+
+#mobile-menu-overlay {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Ensure mobile menu is above everything */
+#mobile-menu {
+    z-index: 50;
+}
+
+#mobile-menu-overlay {
+    z-index: 40;
+}
+
+/* Smooth scrolling for mobile menu */
+#mobile-menu nav {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent body scroll when mobile menu is open */
+body.mobile-menu-open {
+    overflow: hidden;
+}

@@ -89,55 +89,136 @@
             id="home-link" 
             class="text-cyan-400 hover:text-cyan-300 transition-all duration-200 
                     hover:-translate-y-0.5 active:translate-y-0 inline-flex items-center gap-2">
-                Level Up Hub 🌟
+                <span class="hidden sm:inline">Level Up Hub 🌟</span>
+                <span class="sm:hidden">LU Hub 🌟</span>
             </a>
         </h1>
-      <nav class="flex items-center space-x-4">
-        <div id="nav-buttons" class="hidden items-center space-x-4">
-          <button id="nav-dashboard" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Dashboard</button>
-          <button id="nav-skills" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Skills</button>
-          <button id="nav-insights" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Insights</button>
-          <button id="report-btn" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Weekly Report</button>
-        </div>
+        
+        <nav class="flex items-center space-x-4">
+            <!-- Desktop Navigation -->
+            <div id="nav-buttons" class="hidden lg:flex items-center space-x-4">
+                <button id="nav-dashboard" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Dashboard</button>
+                <button id="nav-skills" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Skills</button>
+                <button id="nav-insights" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Insights</button>
+                <button id="report-btn" class="shiny-button px-3 py-2 text-sm font-medium rounded-md">Weekly Report</button>
+            </div>
 
-        <div id="user-auth-container">
-          <button id="sign-in-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-white text-gray-800 hover:bg-gray-200 flex items-center">
-            <svg class="w-4 h-4 mr-2" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c6.49 0 11.92-2.13 15.89-5.81l-7.11-5.52c-2.17 1.46-4.94 2.32-8.78 2.32-6.76 0-12.47-4.55-14.51-10.61H2.26v5.7C6.22 40.05 14.49 46 24 46z"/><path fill="#FBBC05" d="M9.49 27.98c-.45-1.35-.7-2.78-.7-4.28s.25-2.93.7-4.28V13.7H2.26C.81 16.63 0 20.17 0 24s.81 7.37 2.26 10.3l7.23-5.32z"/><path fill="#EA4335" d="M24 9.4c3.51 0 6.58 1.22 9.02 3.54l6.32-6.32C35.91 2.65 30.49 0 24 0 14.49 0 6.22 5.95 2.26 13.7l7.23 5.7c2.04-6.06 7.75-10 14.51-10z"/></svg>
-            Sign in with Google
-          </button>
+            <!-- Mobile Menu Button (shown when logged in) -->
+            <button id="mobile-menu-btn" 
+                    class="hidden lg:hidden p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                    aria-expanded="false"
+                    aria-label="Open menu">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
 
-          <div id="user-info" class="hidden items-center relative">
-              <button id="user-menu-button" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu" class="shiny-button flex text-sm bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
-                  <span class="sr-only">Open user menu</span>
-                  <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
-              </button>
+            <!-- User Auth Container -->
+            <div id="user-auth-container">
+                <button id="sign-in-btn" class="px-4 py-2 text-sm font-medium rounded-md bg-white text-gray-800 hover:bg-gray-200 flex items-center">
+                    <svg class="w-4 h-4 mr-2" viewBox="0 0 48 48">
+                        <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/>
+                        <path fill="#34A853" d="M24 46c6.49 0 11.92-2.13 15.89-5.81l-7.11-5.52c-2.17 1.46-4.94 2.32-8.78 2.32-6.76 0-12.47-4.55-14.51-10.61H2.26v5.7C6.22 40.05 14.49 46 24 46z"/>
+                        <path fill="#FBBC05" d="M9.49 27.98c-.45-1.35-.7-2.78-.7-4.28s.25-2.93.7-4.28V13.7H2.26C.81 16.63 0 20.17 0 24s.81 7.37 2.26 10.3l7.23-5.32z"/>
+                        <path fill="#EA4335" d="M24 9.4c3.51 0 6.58 1.22 9.02 3.54l6.32-6.32C35.91 2.65 30.49 0 24 0 14.49 0 6.22 5.95 2.26 13.7l7.23 5.7c2.04-6.06 7.75-10 14.51-10z"/>
+                    </svg>
+                    <span class="hidden sm:inline">Sign in with Google</span>
+                    <span class="sm:hidden">Sign in</span>
+                </button>
 
-                <div id="user-menu" 
-                    class="z-30 origin-top-right absolute right-0 top-full mt-1 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" 
-                    role="menu" 
-                    aria-labelledby="user-menu-button">
-                    <div class="px-4 py-3">
-                        <p id="user-name" class="text-sm font-medium text-gray-300 truncate"></p>
+                <div id="user-info" class="hidden items-center relative">
+                    <button id="user-menu-button" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu" class="shiny-button flex text-sm bg-gray-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                        <span class="sr-only">Open user menu</span>
+                        <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="User Profile Picture">
+                    </button>
+
+                    <!-- Desktop User Menu -->
+                    <div id="user-menu" 
+                        class="z-30 origin-top-right absolute right-0 top-full mt-1 w-56 rounded-md shadow-lg py-1 bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none" 
+                        role="menu" 
+                        aria-labelledby="user-menu-button">
+                        <div class="px-4 py-3">
+                            <p id="user-name" class="text-sm font-medium text-gray-300 truncate"></p>
+                        </div>
+                        <div class="border-t border-gray-600"></div>
+                        <div id="streak-display" class="flex items-center space-x-2 px-4 py-2" title="Current Streak">
+                            <span class="text-orange-400">🔥</span>
+                            <span id="streak-count" class="text-sm font-bold text-white">0</span>
+                        </div>
+                        <div class="border-t border-gray-600"></div>
+                        <a href="#" 
+                        id="achievements-btn" 
+                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
+                        role="menuitem">My Achievements</a>
+                        <a href="#" 
+                        id="sign-out-btn" 
+                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
+                        role="menuitem">Sign out</a>
                     </div>
-                    <div class="border-t border-gray-600"></div>
-                    <div id="streak-display" class="flex items-center space-x-2 px-4 py-2" title="Current Streak">
-                        <span class="text-orange-400">🔥</span>
-                        <span id="streak-count" class="text-sm font-bold text-white">0</span>
-                    </div>
-                    <div class="border-t border-gray-600"></div>
-                    <a href="#" 
-                    id="achievements-btn" 
-                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
-                    role="menuitem">My Achievements</a>
-                    <a href="#" 
-                    id="sign-out-btn" 
-                    class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
-                    role="menuitem">Sign out</a>
                 </div>
-          </div>
-        </div>
-      </nav>
+            </div>
+        </nav>
     </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
+
+    <!-- Mobile Menu Sidebar -->
+    <div id="mobile-menu" class="hidden fixed top-0 right-0 bottom-0 w-64 bg-gray-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out lg:hidden">
+        <div class="flex flex-col h-full">
+            <!-- Mobile Menu Header -->
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <h2 class="text-lg font-semibold text-white">Menu</h2>
+                <button id="mobile-menu-close" class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile User Info -->
+            <div id="mobile-user-section" class="hidden p-4 border-b border-gray-700">
+                <div class="flex items-center space-x-3 mb-3">
+                    <img id="mobile-user-pic" class="w-12 h-12 rounded-full" src="" alt="User Profile Picture">
+                    <div class="flex-1 min-w-0">
+                        <p id="mobile-user-name" class="text-sm font-medium text-white truncate"></p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 bg-gray-700 rounded-md px-3 py-2">
+                    <span class="text-orange-400">🔥</span>
+                    <span class="text-sm text-gray-300">Streak:</span>
+                    <span id="mobile-streak-count" class="text-sm font-bold text-white">0</span>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Links -->
+            <nav class="flex-1 overflow-y-auto py-4">
+                <div class="space-y-1 px-2">
+                    <button id="mobile-nav-dashboard" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors">
+                        📊 Dashboard
+                    </button>
+                    <button id="mobile-nav-skills" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors">
+                        🎯 Skills
+                    </button>
+                    <button id="mobile-nav-insights" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors">
+                        📈 Insights
+                    </button>
+                    <button id="mobile-report-btn" class="w-full text-left px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors">
+                        📄 Weekly Report
+                    </button>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-700 px-2">
+                    <a href="#" id="mobile-achievements-btn" class="block px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors">
+                        🏆 My Achievements
+                    </a>
+                    <a href="#" id="mobile-sign-out-btn" class="block px-4 py-3 text-sm font-medium text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md transition-colors">
+                        🚪 Sign out
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </div>
 
     <div id="alert-banner" class="bg-yellow-500 text-black text-center p-2 hidden font-semibold"></div>
     <main id="main-content" class="flex-grow p-4 md:p-6"></main>
@@ -203,6 +284,4 @@
           </div>
   </div>
 </body>
-
 </html>
-

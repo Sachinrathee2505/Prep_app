@@ -202,7 +202,10 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                                 document.getElementById('onboarding-modal').classList.remove('hidden');
                                 return;
                             }
-
+                            document.getElementById('mobile-menu-btn')?.classList.remove('hidden');
+                            if (window.updateMobileUserInfo) {
+                                window.updateMobileUserInfo();
+                            }
                             // Show user info in header
                             const userInfo = document.getElementById('user-info');
                             const signInBtn = document.getElementById('sign-in-btn');
@@ -213,13 +216,12 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                                 userInfo.classList.remove('hidden');
                                 userInfo.classList.add('flex');
                             }
-                                    if (signInBtn) {
-                                        signInBtn.classList.add('hidden'); 
-                                    }
+                            if (signInBtn) {
+                                signInBtn.classList.add('hidden'); 
+                            }
                             if (addTaskBtn) addTaskBtn.classList.remove('hidden');
                             if (navButtons) {
-                                navButtons.classList.remove('hidden');
-                                navButtons.classList.add('flex');
+                                navButtons.classList.add('hidden');
                             }
 
                             // Update user display
@@ -238,7 +240,6 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
 
                             initializeAppForUser(user, userProfile);
                         }
-
                     } catch (error) {
                         console.error('❌ Error loading user profile:', error);
                         showToast('Failed to load profile. Please refresh the page.', 'error');
@@ -256,6 +257,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                     const addTaskBtn = document.getElementById('add-task-btn');
                     const navButtons = document.getElementById('nav-buttons');
                     const mainContent = document.getElementById('main-content');
+                    document.getElementById('mobile-menu-btn')?.classList.add('hidden');
 
                     if (userInfo) userInfo.classList.add('hidden');
                     if (signInBtn) {
@@ -263,8 +265,9 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                         signInBtn.onclick = () => auth.signInWithPopup(provider);
                     }
                     if (addTaskBtn) addTaskBtn.classList.add('hidden');
-                    if (navButtons) navButtons.classList.add('hidden');
-
+                    if (navButtons) {
+                        navButtons.classList.add('hidden');
+                    }
                     // Reset app state
                     appState = { 
                         currentView: 'dashboard', 
@@ -353,6 +356,91 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
         navigate('dashboard');
         add3DTiltEffect();
       }
+      // Mobile Menu Toggle Logic
+        function initializeMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenuClose = document.getElementById('mobile-menu-close');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+            
+            // Open mobile menu
+            mobileMenuBtn?.addEventListener('click', () => {
+                mobileMenu.classList.remove('hidden');
+                mobileMenuOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    mobileMenu.classList.remove('translate-x-full');
+                }, 10);
+            });
+            
+            // Close mobile menu
+            const closeMobileMenu = () => {
+                mobileMenu.classList.add('translate-x-full');
+                setTimeout(() => {
+                    mobileMenu.classList.add('hidden');
+                    mobileMenuOverlay.classList.add('hidden');
+                }, 300);
+            };
+            
+            mobileMenuClose?.addEventListener('click', closeMobileMenu);
+            mobileMenuOverlay?.addEventListener('click', closeMobileMenu);
+            
+            // Mobile navigation buttons
+            document.getElementById('mobile-nav-dashboard')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('nav-dashboard')?.click();
+            });
+            
+            document.getElementById('mobile-nav-skills')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('nav-skills')?.click();
+            });
+            
+            document.getElementById('mobile-nav-insights')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('nav-insights')?.click();
+            });
+            
+            document.getElementById('mobile-report-btn')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('report-btn')?.click();
+            });
+            
+            document.getElementById('mobile-achievements-btn')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('achievements-btn')?.click();
+            });
+            
+            document.getElementById('mobile-sign-out-btn')?.addEventListener('click', () => {
+                closeMobileMenu();
+                document.getElementById('sign-out-btn')?.click();
+            });
+            
+            // Update mobile menu when user info changes
+            const updateMobileUserInfo = () => {
+                const userPic = document.getElementById('user-pic')?.src;
+                const userName = document.getElementById('user-name')?.textContent;
+                const streakCount = document.getElementById('streak-count')?.textContent;
+                
+                if (userPic) document.getElementById('mobile-user-pic').src = userPic;
+                if (userName) document.getElementById('mobile-user-name').textContent = userName;
+                if (streakCount) document.getElementById('mobile-streak-count').textContent = streakCount;
+                
+                // Show/hide mobile user section
+                const mobileUserSection = document.getElementById('mobile-user-section');
+                const userInfo = document.getElementById('user-info');
+                if (userInfo && !userInfo.classList.contains('hidden')) {
+                    mobileUserSection.classList.remove('hidden');
+                } else {
+                    mobileUserSection.classList.add('hidden');
+                }
+            };
+            
+            // Call this after user authentication
+            window.updateMobileUserInfo = updateMobileUserInfo;
+        }
+
+        // Initialize on DOM load
+        document.addEventListener('DOMContentLoaded', initializeMobileMenu);
 
       function attachDataListeners(tasksCollection, skillsCollection) {
         
@@ -1125,7 +1213,7 @@ setupEventListeners() {    // Preset buttons
                 renderActivityHeatmap(tasksCollection);
             }, 300);
         });
-        
+
         class AchievementSystem {
             constructor({ db, uid, confetti, tasksCollection, streakTracker }) {
                 this.db = db;
