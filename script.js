@@ -69,6 +69,59 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
       const navDashboard = document.getElementById('nav-dashboard');
       const navSkills = document.getElementById('nav-skills');
 
+      function updateNavigationVisibility(isLoggedIn) {
+            const navButtons = document.getElementById('nav-buttons');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const userInfo = document.getElementById('user-info');
+            const signInBtn = document.getElementById('sign-in-btn');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            
+            if (isLoggedIn) {
+                // LOGGED IN STATE
+                if (navButtons) {
+                    navButtons.className = 'hidden lg:flex items-center space-x-4';
+                }
+                // Show mobile menu button (visible on mobile, hidden on lg+)
+                if (mobileMenuBtn) {
+                    mobileMenuBtn.classList.remove('hidden');
+                    mobileMenuBtn.classList.add('flex', 'lg:hidden');
+                }
+                // Show user info
+                if (userInfo) {
+                    userInfo.classList.remove('hidden');
+                    userInfo.classList.add('flex');
+                }
+                // Hide sign in button
+                if (signInBtn) {
+                    signInBtn.classList.add('hidden');
+                }
+                // Show add task button
+                if (addTaskBtn) {
+                    addTaskBtn.classList.remove('hidden');
+                }
+            } else {
+                // LOGGED OUT STATE
+                // Hide everything
+                if (navButtons) {
+                    navButtons.className = 'hidden';
+                }
+                if (mobileMenuBtn) {
+                    mobileMenuBtn.classList.add('hidden');
+                }
+                if (userInfo) {
+                    userInfo.classList.add('hidden');
+                }
+                // Show sign in button
+                if (signInBtn) {
+                    signInBtn.classList.remove('hidden');
+                    signInBtn.onclick = () => auth.signInWithPopup(provider);
+                }
+                // Hide add task button
+                if (addTaskBtn) {
+                    addTaskBtn.classList.add('hidden');
+                }
+            }
+      }
       // =================================================================================
       // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
       // =================================================================================
@@ -152,10 +205,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                                     });
 
                                     console.log('✅ User profile created:', focusAreas);
-                                    const signInBtn = document.getElementById('sign-in-btn');
-                                    if (signInBtn) {
-                                        signInBtn.classList.add('hidden'); 
-                                    }
+                                    updateNavigationVisibility(true);
                                     // Hide modal
                                     onboardingModal.classList.add('hidden');
 
@@ -202,7 +252,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                                 document.getElementById('onboarding-modal').classList.remove('hidden');
                                 return;
                             }
-                            document.getElementById('mobile-menu-btn')?.classList.remove('hidden');
+                            updateNavigationVisibility(true);
                             if (window.updateMobileUserInfo) {
                                 window.updateMobileUserInfo();
                             }
@@ -211,18 +261,6 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                             const signInBtn = document.getElementById('sign-in-btn');
                             const addTaskBtn = document.getElementById('add-task-btn');
                             const navButtons = document.getElementById('nav-buttons');
-
-                            if (userInfo) {
-                                userInfo.classList.remove('hidden');
-                                userInfo.classList.add('flex');
-                            }
-                            if (signInBtn) {
-                                signInBtn.classList.add('hidden'); 
-                            }
-                            if (addTaskBtn) addTaskBtn.classList.remove('hidden');
-                            if (navButtons) {
-                                navButtons.classList.add('hidden');
-                            }
 
                             // Update user display
                             const userPic = document.getElementById('user-pic');
@@ -250,24 +288,9 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                     // USER IS LOGGED OUT
                     // ========================================
                     console.log('🔓 User logged out');
+                    
+                    updateNavigationVisibility(false);
 
-                    // Hide user-specific UI
-                    const userInfo = document.getElementById('user-info');
-                    const signInBtn = document.getElementById('sign-in-btn');
-                    const addTaskBtn = document.getElementById('add-task-btn');
-                    const navButtons = document.getElementById('nav-buttons');
-                    const mainContent = document.getElementById('main-content');
-                    document.getElementById('mobile-menu-btn')?.classList.add('hidden');
-
-                    if (userInfo) userInfo.classList.add('hidden');
-                    if (signInBtn) {
-                        signInBtn.classList.remove('hidden');
-                        signInBtn.onclick = () => auth.signInWithPopup(provider);
-                    }
-                    if (addTaskBtn) addTaskBtn.classList.add('hidden');
-                    if (navButtons) {
-                        navButtons.classList.add('hidden');
-                    }
                     // Reset app state
                     appState = { 
                         currentView: 'dashboard', 
