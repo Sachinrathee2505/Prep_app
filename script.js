@@ -76,32 +76,33 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
             const signInBtn = document.getElementById('sign-in-btn');
             const addTaskBtn = document.getElementById('add-task-btn');
             
+            document.body.classList.add('auth-ready');
+            
             if (isLoggedIn) {
                 // LOGGED IN STATE
                 if (navButtons) {
                     navButtons.className = 'hidden lg:flex items-center space-x-4';
+                    navButtons.style.opacity = '1';
+                    navButtons.style.visibility = 'visible';
                 }
-                // Show mobile menu button (visible on mobile, hidden on lg+)
                 if (mobileMenuBtn) {
                     mobileMenuBtn.classList.remove('hidden');
                     mobileMenuBtn.classList.add('flex', 'lg:hidden');
+                    mobileMenuBtn.style.opacity = '1';
+                    mobileMenuBtn.style.visibility = 'visible';
                 }
-                // Show user info
                 if (userInfo) {
                     userInfo.classList.remove('hidden');
                     userInfo.classList.add('flex');
                 }
-                // Hide sign in button
                 if (signInBtn) {
                     signInBtn.classList.add('hidden');
                 }
-                // Show add task button
                 if (addTaskBtn) {
                     addTaskBtn.classList.remove('hidden');
                 }
             } else {
                 // LOGGED OUT STATE
-                // Hide everything
                 if (navButtons) {
                     navButtons.className = 'hidden';
                 }
@@ -111,12 +112,10 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                 if (userInfo) {
                     userInfo.classList.add('hidden');
                 }
-                // Show sign in button
                 if (signInBtn) {
                     signInBtn.classList.remove('hidden');
                     signInBtn.onclick = () => auth.signInWithPopup(provider);
                 }
-                // Hide add task button
                 if (addTaskBtn) {
                     addTaskBtn.classList.add('hidden');
                 }
@@ -316,6 +315,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                         `;
                     }
                 }
+                document.body.classList.add('auth-ready');
             });
 
       // =================================================================================

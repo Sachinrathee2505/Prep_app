@@ -752,3 +752,24 @@
 body.mobile-menu-open {
     overflow: hidden;
 }
+    #nav-buttons,
+    #mobile-menu-btn,
+    #add-task-btn,
+    #user-info {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease-in, visibility 0.3s;
+    }
+    
+    body.auth-ready #nav-buttons,
+    body.auth-ready #mobile-menu-btn,
+    body.auth-ready #add-task-btn,
+    body.auth-ready #user-info {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    #sign-in-btn {
+      opacity: 1;
+      visibility: visible;
+    }
