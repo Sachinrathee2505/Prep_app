@@ -1,52 +1,27 @@
-import "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js";
-import "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js";
-import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('✅SW registered.'))
-            .catch(err => console.log('❌SW registration failed:', err));
-        });
-      }
+import { auth, db, provider, firebase } from './js/firebase.js';
+import {
+    showToast,
+    showUndoToast,
+    closeModal,
+    getWeekRange,
+    playSound,
+    hexToRgba,
+    convertSecondsToMinutes,
+    formatHours,
+    formatTime,
+    triggerConfettiAnimation,
+    getCompletionRate,
+    getCategoryName
+} from './js/utils.js';
 
-      // =================================================================================
-      // SECTION 1: FIREBASE SETUP & INITIALIZATION
-      // =================================================================================
-      const firebaseConfig = {
-        apiKey: "AIzaSyB0MOIXrgBOZOPD-ImligI8R5I9LcEP-e4",
-        authDomain: "placement-prep-app.firebaseapp.com",
-        projectId: "placement-prep-app",
-        storageBucket: "placement-prep-app.firebasestorage.app",
-        messagingSenderId: "43190903852",
-        appId: "1:43190903852:web:94efe77f5da7a84b841d89"
-      };
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+       navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('✅SW registered.'))
+        .catch(err => console.log('❌SW registration failed:', err));
+    });
+}
 
-      if (!firebaseConfig.apiKey) {
-        document.getElementById('main-content').innerHTML = `<div class="text-center p-8 bg-red-900 rounded-lg"><h2 class="text-2xl font-bold text-red-200">Firebase Not Configured!</h2><p class="mt-2 text-red-300">Please paste your Firebase config object in index.html to get started.</p></div>`;
-      }else {
-
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const provider = new firebase.auth.GoogleAuthProvider();
-        const db = firebase.firestore();
-
-        // Connect to emulators in development
-        if (window.location.hostname === "localhost") {
-            auth.useEmulator("http://localhost:9099");
-            db.useEmulator("localhost", 8080);
-            console.log("✅ Firebase emulators connected");
-        }
-
-        // Enable offline persistence with multi-tab support
-        db.enablePersistence({ synchronizeTabs: true })
-            .catch((err) => {
-                if (err.code === 'failed-precondition') {
-                    console.warn('⚠️ Persistence failed: Multiple tabs open');
-                } else if (err.code === 'unimplemented') {
-                    console.warn('⚠️ Persistence failed: Browser not supported');
-                }
-        });
       // =================================================================================
       // SECTION 2: GLOBAL STATE & UI ELEMENTS
       // =================================================================================
@@ -59,6 +34,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
         activeFilter: 'active'
      };
       let focusMode = null;
+      let achievementSystem = null;
       const motivationalQuotes = [
         "The best way to predict the future is to create it.",
         "Success is the sum of small efforts, repeated day in and day out.",
@@ -332,7 +308,7 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
 
         // Initialize all helper classes
         const streakTracker = new StreakTracker(user.uid);
-        const achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
+        achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker });
         focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
         
         // Set up the real-time UI listener for the streak display
@@ -346,6 +322,9 @@ import "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js";
                 streakDisplay.classList.add('flex');
             } else {
                 streakDisplay.classList.add('hidden');
+            }
+            if (window.updateMobileUserInfo) {
+                window.updateMobileUserInfo();
             }
         });
 
@@ -1789,16 +1768,6 @@ setupEventListeners() {    // Preset buttons
             return '';
         };
 
-        function getCompletionRate() {
-            const total = appState.tasks.length;
-            if (total === 0) return 0;
-            const completed = appState.tasks.filter(t => t.completed).length;
-            return Math.round((completed / total) * 100);
-        };
-
-        function triggerConfettiAnimation() {
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        };
 
         // Make this function global so the inline onclick can find it
         window.handleQuickAction = (action) => {
@@ -2459,35 +2428,6 @@ function createTaskCard(task) {
         }
 
 
-        // 🔥 Helper function to convert hex to rgba
-        function hexToRgba(hex, alpha = 1) {
-            // Remove # if present
-            hex = hex.replace('#', '');
-            
-            // Parse hex values
-            const r = parseInt(hex.substring(0, 2), 16);
-            const g = parseInt(hex.substring(2, 4), 16);
-            const b = parseInt(hex.substring(4, 6), 16);
-            
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        }
-        // ✅ Convert seconds to minutes
-        function convertSecondsToMinutes(seconds) {
-            return Math.round(Math.max(0, seconds) / 60);
-        }
-
-        // ✅ Format minutes as "X.X hours"
-        function formatHours(minutes) {
-            const hours = (minutes / 60).toFixed(1);
-            return `${hours} hours`;
-        }
-
-        // ✅ Format seconds as "Xh Ym"
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            return `${hours}h ${minutes}m`;
-        }
 
         function showError(message) {
             const errorDiv = document.getElementById('chart-error');
@@ -2506,20 +2446,47 @@ function createTaskCard(task) {
                 showToast('User profile not loaded', 'error');
                 return;
             }
+            modalContainer.innerHTML = `
+                    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
+                        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-2xl font-bold">Weekly Progress Report</h2>
+                                <span class="text-sm text-gray-400">${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}</span>
+                            </div>
+                            
+                            <div id="report-loading-state" class="text-center py-10">
+                                <svg class="animate-spin h-8 w-8 text-cyan-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p class="mt-4 text-gray-400">Generating your report...</p>
+                            </div>
+
+                            <div id="report-content-area" class="hidden"></div>
+
+                            <div class="flex justify-end mt-6">
+                                <button id="close-report-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            document.getElementById('close-report-btn').onclick = closeModal;
             
-            // Fetch time logs
-            const logsSnapshot = await timeLogsCollection
-                .where('timestamp', '>=', startOfWeek)
-                .where('timestamp', '<=', endOfWeek)
-                .get();
-            
-            // Fetch completed tasks this week
-            const tasksSnapshot = await tasksCollection
-                .where('completed', '==', true)
-                .where('completedAt', '>=', startOfWeek)
-                .where('completedAt', '<=', endOfWeek)
-                .get();
-            
+            const [logsSnapshot, tasksSnapshot] = await Promise.all([
+                // Query 1: Time logs
+                timeLogsCollection
+                    .where('timestamp', '>=', startOfWeek)
+                    .where('timestamp', '<=', endOfWeek)
+                    .get(),
+                
+                // Query 2: Completed tasks
+                tasksCollection
+                    .where('completed', '==', true)
+                    .where('completedAt', '>=', startOfWeek)
+                    .where('completedAt', '<=', endOfWeek)
+                    .get()
+            ]);
             // ✅ Initialize weeklyData dynamically from user's focus areas
             const weeklyData = {};
             userProfile.focusAreas.forEach(area => {
@@ -2578,14 +2545,10 @@ function createTaskCard(task) {
                 return total > 0 ? Math.round((value / total) * 100) : 0;
             };
 
-            modalContainer.innerHTML = `
-                <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
-                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold">Weekly Progress Report</h2>
-                            <span class="text-sm text-gray-400">${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}</span>
-                        </div>
-                        
+            const reportContentArea = document.getElementById('report-content-area');
+            const reportLoadingState = document.getElementById('report-loading-state');
+
+            reportContentArea.innerHTML = `
                         <!-- Summary Stats -->
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                             <div class="bg-gray-700 rounded-lg p-4 text-center">
@@ -2716,13 +2679,12 @@ function createTaskCard(task) {
                                 </svg>
                                 Export Report
                             </button>
-                            <button id="close-report-btn" 
-                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">
-                                Close
-                            </button>
                         </div>
                     </div>
                 </div>`;
+
+            if (reportLoadingState) reportLoadingState.classList.add('hidden');
+            if (reportContentArea) reportContentArea.classList.remove('hidden');
             
             document.getElementById('close-report-btn').onclick = closeModal;
             
@@ -2743,7 +2705,7 @@ function createTaskCard(task) {
                 time > max.time ? { category: cat, time } : max, { time: 0 });
             
             if (mostFocused.category) {
-                insights.push(`💡 You spent most time on <span class="font-semibold">${getCategoryName(mostFocused.category)}</span> this week`);
+                insights.push(`💡 You spent most time on <span class="font-semibold">${getCategoryName(mostFocused.category, appState)}</span> this week`);
             }
             
             // Productivity insight
@@ -2769,88 +2731,7 @@ function createTaskCard(task) {
             return insights.map(insight => `<li>${insight}</li>`).join('');
         }
 
-        function showUndoToast(message, onUndo) {
-            // Remove any existing toasts
-            const toastContainer = document.getElementById('toast-container');
-            toastContainer.innerHTML = '';
-
-            const toast = document.createElement('div');
-            toast.className = 'bg-gray-700 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between animate-toast-in';
-
-            const messageSpan = document.createElement('span');
-            messageSpan.textContent = message;
-            toast.appendChild(messageSpan);
-
-            const undoButton = document.createElement('button');
-            undoButton.className = 'ml-4 font-bold text-cyan-400 hover:text-cyan-300';
-            undoButton.textContent = 'Undo';
-            toast.appendChild(undoButton);
-
-            // This is the timer for the deletion
-            const timeoutId = setTimeout(() => {
-                // If the timer finishes, we don't need the onUndo function anymore
-                // The task will be permanently deleted by the calling function.
-                toast.classList.remove('animate-toast-in');
-                toast.classList.add('animate-toast-out');
-                setTimeout(() => toast.remove(), 500);
-            }, 7000); // 7 seconds to undo
-
-            undoButton.onclick = () => {
-                clearTimeout(timeoutId); // Cancel the permanent deletion
-                onUndo(); // Run the undo logic
-                toast.remove(); // Remove the toast immediately
-            };
-
-            toastContainer.appendChild(toast);
-        }
-
-        // ✅ Dynamic category name lookup
-        function getCategoryName(categoryId) {
-            const userProfile = appState.userProfile;
-            if (!userProfile || !userProfile.focusAreas) {
-                return categoryId;
-            }
-            const category = userProfile.focusAreas.find(area => area.id === categoryId);
-            return category ? category.name : categoryId;
-        }
-
         async function exportWeeklyReport() {
             // Implementation for exporting report as PDF or CSV
             showToast('Report exported successfully!');
         }
-
-        function playSound(soundFile) {
-            const audio = new Audio(soundFile);
-            audio.volume = 0.5;
-            audio.play().catch(error => {
-                // This catch prevents console errors if the browser blocks autoplay
-                console.warn("Audio play prevented by browser:", error);
-            });
-        }
-
-      function closeModal() { modalContainer.innerHTML = ''; }
-
-      function showToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'bg-gray-700 text-white px-6 py-3 rounded-lg shadow-lg animate-toast-in';
-        toast.textContent = message;
-        document.getElementById('toast-container').appendChild(toast);
-        setTimeout(() => {
-          toast.classList.remove('animate-toast-in');
-          toast.classList.add('animate-toast-out');
-          setTimeout(() => toast.remove(), 500);
-        }, 3000);
-      }
-
-      function getWeekRange(date) {
-        const startOfWeek = new Date(date);
-        const day = startOfWeek.getDay();
-        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-        startOfWeek.setDate(diff);
-        startOfWeek.setHours(0, 0, 0, 0);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-        return { startOfWeek, endOfWeek };
-      }
-    }
