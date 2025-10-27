@@ -1,731 +1,735 @@
-      .task-card {
-      /* The outer card is now a positioning and perspective container */
-      position: relative;
-      transform: perspective(1000px);
-      padding: 1rem; /* We move the padding here */
-      background-color: rgb(55 65 81); /* bg-gray-700 */
-      border-radius: 0.5rem; /* rounded-lg */
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-    }
-    /* --- Styles for High-Priority Electric Border --- */
-    @keyframes gradient-shift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    .priority-high {
-      position: relative;
-      padding: 2px !important; 
-      background: linear-gradient(45deg, #7df9ff, #ff00ff, #ffff00, #7df9ff);
-      background-size: 400% 400%;
-      animation: gradient-shift 3s ease infinite;
-    }
-    
-    .priority-high::before {
-      content: '';
-      position: absolute;
-      inset: 2px; 
-      background: rgb(55 65 81); /* bg-gray-700 */
-      border-radius: 6px; /* A bit less than the parent's rounded-lg */
-      z-index: 1;
-    }
-    
-    /* Make sure the actual card content appears ON TOP of the inner background */
-    .priority-high > * {
-      position: relative;
-      z-index: 2;
-      padding: 1rem; 
-    }
-    .card-transform-layer {
-      /* This layer is the visual background that tilts */
-      position: absolute;
-      inset: 0; /* Cover the entire parent */
-      background-color: rgb(55 65 81); /* bg-gray-700 */
-      border-radius: inherit;
-      transform-style: preserve-3d;
-      transition: transform 0.4s ease-out;
-    }
+/* --- Auth Loader Styles --- */
+#auth-loader-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.9); /* bg-gray-900 with opacity */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
 
-    .task-card:hover .card-transform-layer {
-      transition: transform 0.1s ease-in;
-      transform: translateZ(20px);
-    }
+/* This is the "show" state, when .hidden is removed */
+#auth-loader-overlay:not(.hidden) {
+  opacity: 1;
+  visibility: visible;
+}
 
-    /* The glow effect is now on the transform layer */
-    .card-transform-layer::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.15), transparent 25%);
-      opacity: 0;
-      transition: opacity 0.4s ease-out;
-      border-radius: inherit;
-      pointer-events: none;
-    }
+.loader-spinner {
+  border: 4px solid #4b5563; /* border-gray-600 */
+  border-top: 4px solid #22d3ee; /* border-cyan-400 */
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
 
-    .task-card:hover .card-transform-layer::before {
-      opacity: 1;
-    }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* --- End Auth Loader Styles --- */
+.task-card {
+  /* The outer card is now a positioning and perspective container */
+  position: relative;
+  transform: perspective(1000px);
+  padding: 1rem; /* We move the padding here */
+  background-color: rgb(55 65 81); /* bg-gray-700 */
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+}
+/* --- Styles for High-Priority Electric Border --- */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 
-    .completed { 
-        text-decoration: line-through; 
-        opacity: 0.6; 
-    }
-    .star-rating svg { 
-        cursor: pointer; 
-    }
+.priority-high {
+  position: relative;
+  padding: 2px !important; 
+  background: linear-gradient(45deg, #7df9ff, #ff00ff, #ffff00, #7df9ff);
+  background-size: 400% 400%;
+  animation: gradient-shift 3s ease infinite;
+}
 
-    @keyframes pulse {
-      50% {
-        opacity: 0.5;
-      }
-    }
-    .skeleton-card {
-      background-color: rgba(55, 65, 81, 0.5); /* A dimmer version of bg-gray-700 */
-      border-radius: 0.5rem;
-      padding: 1rem;
-    }
-    .skeleton {
-      background-color: rgba(75, 85, 99, 0.8); /* A dimmer version of bg-gray-600 */
-      border-radius: 0.25rem;
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-      /* Focus Mode Styles */
-    .focus-overlay { position: fixed; 
-        inset: 0; 
-        background: rgba(0, 0, 0, 0.95); 
-        backdrop-filter: blur(10px); 
-        z-index: 10000; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        opacity: 0; 
-        transition: opacity 0.3s ease; 
-        pointer-events: none; 
-    }
-    .focus-overlay:not(.hidden) { 
-        opacity: 1; 
-        pointer-events: auto; 
-    }
-    .focus-container { 
-        width: 90%; 
-        max-width: 600px; 
-        text-align: center;
-        position: relative; 
-    }
-    .focus-close { 
-        position: absolute; 
-        top: -40px; 
-        right: 0; 
-        background: rgba(255, 255, 255, 0.1); 
-        border: 1px solid rgba(255, 255, 255, 0.2); 
-        color: rgba(255, 255, 255, 0.6); 
-        width: 40px; 
-        height: 40px; 
-        border-radius: 50%; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        cursor: pointer; 
-        transition: all 0.2s; 
-    }
-    .focus-close:hover { 
-        background: rgba(255, 255, 255, 0.2); 
-        color: white; 
-        transform: scale(1.1); 
-    }
+.priority-high::before {
+  content: '';
+  position: absolute;
+  inset: 2px; 
+  background: rgb(55 65 81); /* bg-gray-700 */
+  border-radius: 6px; /* A bit less than the parent's rounded-lg */
+  z-index: 1;
+}
 
-    .focus-content { 
-        animation: focusSlideIn 0.4s ease-out; 
-    }
+/* Make sure the actual card content appears ON TOP of the inner background */
+.priority-high > * {
+  position: relative;
+  z-index: 2;
+  padding: 1rem; 
+}
+.card-transform-layer {
+  /* This layer is the visual background that tilts */
+  position: absolute;
+  inset: 0; /* Cover the entire parent */
+  background-color: rgb(55 65 81); /* bg-gray-700 */
+  border-radius: inherit;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease-out;
+}
+.task-card:hover .card-transform-layer {
+  transition: transform 0.1s ease-in;
+  transform: translateZ(20px);
+}
+/* The glow effect is now on the transform layer */
+.card-transform-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.15), transparent 25%);
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  border-radius: inherit;
+  pointer-events: none;
+}
 
-    @keyframes focusSlideIn { 
-        from { 
-            transform: translateY(20px); opacity: 0; }
-        to 
-        { 
-            transform: translateY(0); opacity: 1; } 
-    }
-
-    .focus-task-name { 
-        font-size: 2rem; 
-        font-weight: 600; 
-        color: white; 
-        margin: 0 0 3rem; 
-        opacity: 0.9; 
-    }
-    .focus-timer-group { 
-        margin-bottom: 3rem; 
-    }
-    .focus-timer { 
-        font-size: 6rem; 
-        font-weight: 200; 
-        color: white; 
-        font-variant-numeric: tabular-nums; 
-        letter-spacing: -0.02em; 
-        margin-bottom: 1rem; 
-    }
-    .focus-progress {
-        width: 100%; 
-        height: 4px; 
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px; 
-        overflow: hidden; 
-        margin-bottom: 1rem; 
-    }
+.task-card:hover .card-transform-layer::before {
+  opacity: 1;
+}
+.completed { 
+    text-decoration: line-through; 
+    opacity: 0.6; 
+}
+.star-rating svg { 
+    cursor: pointer; 
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.skeleton-card {
+  background-color: rgba(55, 65, 81, 0.5); /* A dimmer version of bg-gray-700 */
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.skeleton {
+  background-color: rgba(75, 85, 99, 0.8); /* A dimmer version of bg-gray-600 */
+  border-radius: 0.25rem;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+  /* Focus Mode Styles */
+.focus-overlay { position: fixed; 
+    inset: 0; 
+    background: rgba(0, 0, 0, 0.95); 
+    backdrop-filter: blur(10px); 
+    z-index: 10000; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    opacity: 0; 
+    transition: opacity 0.3s ease; 
+    pointer-events: none; 
+}
+.focus-overlay:not(.hidden) { 
+    opacity: 1; 
+    pointer-events: auto; 
+}
+.focus-container { 
+    width: 90%; 
+    max-width: 600px; 
+    text-align: center;
+    position: relative; 
+}
+.focus-close { 
+    position: absolute; 
+    top: -40px; 
+    right: 0; 
+    background: rgba(255, 255, 255, 0.1); 
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    color: rgba(255, 255, 255, 0.6); 
+    width: 40px; 
+    height: 40px; 
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    transition: all 0.2s; 
+}
+.focus-close:hover { 
+    background: rgba(255, 255, 255, 0.2); 
+    color: white; 
+    transform: scale(1.1); 
+}
+.focus-content { 
+    animation: focusSlideIn 0.4s ease-out; 
+}
+@keyframes focusSlideIn { 
+    from { 
+        transform: translateY(20px); opacity: 0; }
+    to 
+    { 
+        transform: translateY(0); opacity: 1; } 
+}
+.focus-task-name { 
+    font-size: 2rem; 
+    font-weight: 600; 
+    color: white; 
+    margin: 0 0 3rem; 
+    opacity: 0.9; 
+}
+.focus-timer-group { 
+    margin-bottom: 3rem; 
+}
+.focus-timer { 
+    font-size: 6rem; 
+    font-weight: 200; 
+    color: white; 
+    font-variant-numeric: tabular-nums; 
+    letter-spacing: -0.02em; 
+    margin-bottom: 1rem; 
+}
+.focus-progress {
+    width: 100%; 
+    height: 4px; 
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px; 
+    overflow: hidden; 
+    margin-bottom: 1rem; 
+}
+.focus-progress-bar { 
+    height: 100%; 
+    background: linear-gradient(90deg, #10b981, #34d399); 
+    width: 0%; 
+    transition: width 1s linear; 
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); 
+}
+.focus-status { 
+    color: rgba(255, 255, 255, 0.6); 
+    font-size: 0.875rem; 
+    text-transform: uppercase; 
+    letter-spacing: 0.1em; 
+}
+.focus-controls { 
+    display: flex; 
+    gap: 1rem; 
+    justify-content: center; 
+    margin-bottom: 2rem; 
+}
+.focus-btn { 
+    padding: 0.75rem 2rem; 
+    border-radius: 8px; 
+    font-weight: 500; 
+    border: none; 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    font-size: 1rem; 
+}
+.focus-btn-primary { 
+    background: #10b981; 
+    color: white; 
+}
+.focus-btn-primary:hover { 
+    background: #059669; 
+    transform: translateY(-1px); 
+}
+.focus-btn-secondary { 
+    background: rgba(255, 255, 255, 0.1); 
+    color: rgba(255, 255, 255, 0.8); 
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+}
+.focus-btn-secondary:hover { 
+    background: rgba(255, 255, 255, 0.15); 
+}
+.focus-presets h2 { 
+    color: white; 
+    font-size: 1.5rem; 
+    margin-bottom: 2rem; 
+    font-weight: 500; 
+}
+.preset-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+    gap: 1rem; 
+}
+.preset-btn { 
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 12px; 
+    padding: 1.5rem 1rem; 
+    cursor: pointer;
+    transition: all 0.2s; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0.5rem; 
+}
+.preset-btn:hover { 
+    background: rgba(255, 255, 255, 0.1); 
+    border-color: rgba(255, 255, 255, 0.3); 
+    transform: translateY(-2px); 
+}
+.preset-time { 
+    font-size: 1.5rem; 
+    font-weight: 600; 
+    color: white; 
+}
+.preset-label { 
+    font-size: 0.875rem; 
+    color: rgba(255, 255, 255, 0.6); 
+}
+.break-overlay { 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0, 0, 0, 0.9); 
+    backdrop-filter: blur(10px); 
+    z-index: 10001; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    text-align: center; 
+    opacity: 0; 
+    transition: opacity 0.3s ease; 
+    pointer-events: none; 
+}
+.break-overlay:not(.hidden) { 
+    opacity: 1; 
+    pointer-events: auto; 
+}
+.break-content h2 { 
+    color: white; 
+    font-size: 2rem; 
+    margin-bottom: 2rem; 
+}
+.break-timer { 
+    font-size: 4rem; 
+    color: #60a5fa; 
+    font-weight: 200; 
+    margin-bottom: 2rem; 
+    font-variant-numeric: tabular-nums; 
+}
+@media (prefers-reduced-motion: reduce) { 
+    .focus-overlay, .focus-content, .focus-btn, .preset-btn { 
+        animation: none; 
+        transition: none; 
+    } 
     .focus-progress-bar { 
-        height: 100%; 
-        background: linear-gradient(90deg, #10b981, #34d399); 
-        width: 0%; 
-        transition: width 1s linear; 
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); 
-    }
-    .focus-status { 
-        color: rgba(255, 255, 255, 0.6); 
-        font-size: 0.875rem; 
-        text-transform: uppercase; 
-        letter-spacing: 0.1em; 
-    }
-    .focus-controls { 
-        display: flex; 
-        gap: 1rem; 
-        justify-content: center; 
-        margin-bottom: 2rem; 
-    }
-    .focus-btn { 
-        padding: 0.75rem 2rem; 
-        border-radius: 8px; 
-        font-weight: 500; 
-        border: none; 
-        cursor: pointer; 
-        transition: all 0.2s; 
-        font-size: 1rem; 
-    }
-    .focus-btn-primary { 
-        background: #10b981; 
-        color: white; 
-    }
-    .focus-btn-primary:hover { 
-        background: #059669; 
-        transform: translateY(-1px); 
-    }
-    .focus-btn-secondary { 
-        background: rgba(255, 255, 255, 0.1); 
-        color: rgba(255, 255, 255, 0.8); 
-        border: 1px solid rgba(255, 255, 255, 0.2); 
-    }
-    .focus-btn-secondary:hover { 
-        background: rgba(255, 255, 255, 0.15); 
-    }
-    .focus-presets h2 { 
-        color: white; 
-        font-size: 1.5rem; 
-        margin-bottom: 2rem; 
-        font-weight: 500; 
-    }
-    .preset-grid { 
-        display: grid; 
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
-        gap: 1rem; 
-    }
-    .preset-btn { 
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1); 
-        border-radius: 12px; 
-        padding: 1.5rem 1rem; 
-        cursor: pointer;
-        transition: all 0.2s; 
-        display: flex; 
-        flex-direction: column; 
-        gap: 0.5rem; 
-    }
-    .preset-btn:hover { 
-        background: rgba(255, 255, 255, 0.1); 
-        border-color: rgba(255, 255, 255, 0.3); 
-        transform: translateY(-2px); 
-    }
-    .preset-time { 
-        font-size: 1.5rem; 
-        font-weight: 600; 
-        color: white; 
-    }
-    .preset-label { 
-        font-size: 0.875rem; 
-        color: rgba(255, 255, 255, 0.6); 
-    }
-    .break-overlay { 
-        position: fixed; 
-        inset: 0; 
-        background: rgba(0, 0, 0, 0.9); 
-        backdrop-filter: blur(10px); 
-        z-index: 10001; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        text-align: center; 
-        opacity: 0; 
-        transition: opacity 0.3s ease; 
-        pointer-events: none; 
-    }
-    .break-overlay:not(.hidden) { 
-        opacity: 1; 
-        pointer-events: auto; 
-    }
-    .break-content h2 { 
-        color: white; 
-        font-size: 2rem; 
-        margin-bottom: 2rem; 
-    }
-    .break-timer { 
+        transition: none; 
+    } 
+}
+@media (max-width: 640px) { 
+    .focus-timer { 
         font-size: 4rem; 
-        color: #60a5fa; 
-        font-weight: 200; 
-        margin-bottom: 2rem; 
-        font-variant-numeric: tabular-nums; 
-    }
-    @media (prefers-reduced-motion: reduce) { 
-        .focus-overlay, .focus-content, .focus-btn, .preset-btn { 
-            animation: none; 
-            transition: none; 
-        } 
-        .focus-progress-bar { 
-            transition: none; 
-        } 
-    }
-    @media (max-width: 640px) { 
-        .focus-timer { 
-            font-size: 4rem; 
-        } 
-        .focus-task-name { 
-            font-size: 1.5rem; 
-        } 
-        .preset-grid { 
-            grid-template-columns: repeat(2, 1fr); 
-        } 
-    }
-
-    /* --- Achievement System Styles --- */
-    .achievement-popup { 
-        position: fixed;
-         top: 20px;
-         right: 20px;
-         transform:
-         translateX(400px);
-         transition: transform 0.5s ease-out;
-         z-index: 10000; 
-    }
-    .achievement-popup.show { 
-        transform: translateX(0); 
-    }
-    .achievement-content { 
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
-        border-radius: 12px; 
-        padding: 1rem 1.25rem; 
-        display: flex; 
-        align-items: center; 
-        gap: 1rem; 
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); 
-        border: 1px solid; 
-        min-width: 350px; 
-    }
-    .achievement-content.common { 
-        border-color: #64748b; 
-    }
-    .achievement-content.uncommon { 
-        border-color: #34d399; 
-    }
-    .achievement-content.rare {
-         border-color: #60a5fa; 
-    }
-    .achievement-content.legendary { 
-        border-color: #facc15; 
-    }
-    .achievement-icon { 
-        font-size: 2.5rem; 
-    }
-    .achievement-details h3 { 
-        font-size: 0.875rem; 
-        color: #9ca3af; 
-        text-transform: uppercase; 
-    }
-    .achievement-details h4 { 
-        font-size: 1.125rem; 
-        font-weight: 600; 
-        color: #fff; 
-    }
-    .achievement-details p { 
-        font-size: 0.875rem; 
-        color: #d1d5db; 
-    }
-    .achievement-points { 
-        font-size: 0.875rem; 
-        font-weight: 600; 
-        color: #facc15; 
-        margin-top: 4px; 
-    }
-    .achievements-page { 
-        padding: 1rem; 
-    }
-    .achievements-header { 
-        text-align: center; 
-        margin-bottom: 2rem; 
-    }
-    .stats-bar { 
-        display: flex; 
-        justify-content: center; 
-        gap: 1rem; 
-        background: rgba(255,255,255,0.05); 
-        padding: 1rem; 
-        border-radius: 12px; 
-        max-width: 500px;
-        margin: 1rem auto 0; 
-    }
-    .stat { 
-        flex: 1; 
-    }
-    .stat-value { 
+    } 
+    .focus-task-name { 
         font-size: 1.5rem; 
-        font-weight: 700; 
-        color: #fff; 
-    }
-    .stat-label { 
-        font-size: 0.75rem; 
-        text-transform: uppercase; 
-        color: #9ca3af; 
-    }
-    .achievement-category { 
-        margin-bottom: 2rem; 
-    }
-    .category-title { 
-        font-size: 1.5rem; 
-        font-weight: 600; 
-        color: #fff; 
-        margin-bottom: 1rem;
-        display: flex; 
-        align-items: center;
-        gap: 0.5rem; }
-    .achievements-grid { 
-        display: grid; 
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-        gap: 1rem; 
-    }
-    .achievement-card { 
-        background: #374151; 
-        border-radius: 8px; 
-        padding: 1rem; 
-        text-align: center; 
-        position: relative; 
-        border: 1px solid #4b5563; 
-    }
-    .achievement-card.unlocked { 
-        border-color: #a78bfa; 
-    }
-    .achievement-card .achievement-icon { 
-        font-size: 3rem; 
-        margin-bottom: 0.5rem; 
-    }
-    .achievement-card .achievement-name { 
-        font-weight: 600; 
-        color: #fff; 
-    }
-    .achievement-card .achievement-description { 
-        font-size: 0.875rem; 
-        color: #d1d5db; 
-        min-height: 40px; 
-    }
-    .achievement-card .achievement-footer { 
-        display: flex; 
-        justify-content: space-between; 
-        font-size: 0.75rem; 
-        color: #9ca3af; 
-        border-top: 1px solid #4b5563; 
-        padding-top: 0.5rem; 
-        margin-top: 0.5rem; 
-    }
-    .achievement-card .achievement-points { 
-        color: #facc15; 
-        font-weight: 600; 
-    }
-    .achievement-card .achievement-rarity { 
-        text-transform: capitalize; 
-    }
-    .achievement-card.locked .locked-overlay { 
-        position: absolute; 
-        inset: 0; 
-        background: rgba(0,0,0,0.7); 
-        backdrop-filter: blur(4px); 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        font-size: 3rem; 
-        color: #fff; 
-        border-radius: 8px; 
-    }
-
-    .heatmap-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 1rem 0;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .heatmap-container {
-        display: flex;
-        gap: 8px;
-        min-width: min-content;
-        padding: 0 1rem;
-    }
-
-    .day-labels {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        padding-top: 28px;
-        flex-shrink: 0;
-    }
-
-    .day-label {
-        height: 12px;
-        font-size: 0.7rem;
-        color: #9ca3af;
-        display: flex;
-        align-items: center;
-        line-height: 12px;
-    }
-
-    .grid-wrapper {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .month-labels {
-        display: grid;
-        gap: 3px;
-        margin-bottom: 4px;
-        height: 20px;
-    }
-
-    .month-label {
-        font-size: 0.75rem;
-        color: #9ca3af;
-        font-weight: 500;
-    }
-
-    .heatmap-grid {
-        display: grid;
-        gap: 3px;
-    }
-
-    .week-column {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
-
-    /* Day cells */
+    } 
+    .preset-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+    } 
+}
+/* --- Achievement System Styles --- */
+.achievement-popup { 
+    position: fixed;
+     top: 20px;
+     right: 20px;
+     transform:
+     translateX(400px);
+     transition: transform 0.5s ease-out;
+     z-index: 10000; 
+}
+.achievement-popup.show { 
+    transform: translateX(0); 
+}
+.achievement-content { 
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
+    border-radius: 12px; 
+    padding: 1rem 1.25rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 1rem; 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); 
+    border: 1px solid; 
+    min-width: 350px; 
+}
+.achievement-content.common { 
+    border-color: #64748b; 
+}
+.achievement-content.uncommon { 
+    border-color: #34d399; 
+}
+.achievement-content.rare {
+     border-color: #60a5fa; 
+}
+.achievement-content.legendary { 
+    border-color: #facc15; 
+}
+.achievement-icon { 
+    font-size: 2.5rem; 
+}
+.achievement-details h3 { 
+    font-size: 0.875rem; 
+    color: #9ca3af; 
+    text-transform: uppercase; 
+}
+.achievement-details h4 { 
+    font-size: 1.125rem; 
+    font-weight: 600; 
+    color: #fff; 
+}
+.achievement-details p { 
+    font-size: 0.875rem; 
+    color: #d1d5db; 
+}
+.achievement-points { 
+    font-size: 0.875rem; 
+    font-weight: 600; 
+    color: #facc15; 
+    margin-top: 4px; 
+}
+.achievements-page { 
+    padding: 1rem; 
+}
+.achievements-header { 
+    text-align: center; 
+    margin-bottom: 2rem; 
+}
+.stats-bar { 
+    display: flex; 
+    justify-content: center; 
+    gap: 1rem; 
+    background: rgba(255,255,255,0.05); 
+    padding: 1rem; 
+    border-radius: 12px; 
+    max-width: 500px;
+    margin: 1rem auto 0; 
+}
+.stat { 
+    flex: 1; 
+}
+.stat-value { 
+    font-size: 1.5rem; 
+    font-weight: 700; 
+    color: #fff; 
+}
+.stat-label { 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    color: #9ca3af; 
+}
+.achievement-category { 
+    margin-bottom: 2rem; 
+}
+.category-title { 
+    font-size: 1.5rem; 
+    font-weight: 600; 
+    color: #fff; 
+    margin-bottom: 1rem;
+    display: flex; 
+    align-items: center;
+    gap: 0.5rem; }
+.achievements-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+    gap: 1rem; 
+}
+.achievement-card { 
+    background: #374151; 
+    border-radius: 8px; 
+    padding: 1rem; 
+    text-align: center; 
+    position: relative; 
+    border: 1px solid #4b5563; 
+}
+.achievement-card.unlocked { 
+    border-color: #a78bfa; 
+}
+.achievement-card .achievement-icon { 
+    font-size: 3rem; 
+    margin-bottom: 0.5rem; 
+}
+.achievement-card .achievement-name { 
+    font-weight: 600; 
+    color: #fff; 
+}
+.achievement-card .achievement-description { 
+    font-size: 0.875rem; 
+    color: #d1d5db; 
+    min-height: 40px; 
+}
+.achievement-card .achievement-footer { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 0.75rem; 
+    color: #9ca3af; 
+    border-top: 1px solid #4b5563; 
+    padding-top: 0.5rem; 
+    margin-top: 0.5rem; 
+}
+.achievement-card .achievement-points { 
+    color: #facc15; 
+    font-weight: 600; 
+}
+.achievement-card .achievement-rarity { 
+    text-transform: capitalize; 
+}
+.achievement-card.locked .locked-overlay { 
+    position: absolute; 
+    inset: 0; 
+    background: rgba(0,0,0,0.7); 
+    backdrop-filter: blur(4px); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 3rem; 
+    color: #fff; 
+    border-radius: 8px; 
+}
+.heatmap-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1rem 0;
+    -webkit-overflow-scrolling: touch;
+}
+.heatmap-container {
+    display: flex;
+    gap: 8px;
+    min-width: min-content;
+    padding: 0 1rem;
+}
+.day-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 28px;
+    flex-shrink: 0;
+}
+.day-label {
+    height: 12px;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    line-height: 12px;
+}
+.grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.month-labels {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 4px;
+    height: 20px;
+}
+.month-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 500;
+}
+.heatmap-grid {
+    display: grid;
+    gap: 3px;
+}
+.week-column {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+/* Day cells */
+.day-cell {
+    width: 12px;
+    height: 12px;
+    background-color: rgba(55, 65, 81, 0.3);
+    border: 1px solid rgba(75, 85, 99, 0.4);
+    border-radius: 2px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+/* Inactive cells (outside date range) */
+.day-cell.inactive {
+    background-color: transparent;
+    border-color: rgba(75, 85, 99, 0.15);
+    cursor: default;
+}
+/* Hover effects */
+.day-cell:not(.inactive):hover {
+    transform: scale(1.4);
+    border-color: #60a5fa;
+    z-index: 10;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+/* Activity color levels */
+.day-cell.color-level-1 { 
+    background-color: #0e4429; 
+    border-color: #0e4429;
+}
+.day-cell.color-level-2 { 
+    background-color: #006d32; 
+    border-color: #006d32;
+}
+.day-cell.color-level-3 { 
+    background-color: #26a641; 
+    border-color: #26a641;
+}
+.day-cell.color-level-4 { 
+    background-color: #39d353; 
+    border-color: #39d353;
+}
+/* Tooltip */
+.heatmap-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.95);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.heatmap-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid rgba(0, 0, 0, 0.95);
+}
+/* Legend */
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 12px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+.legend-label {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin: 0 4px;
+}
+.legend-item {
+    display: flex;
+}
+/* Responsive breakpoints */
+@media (max-width: 640px) {
     .day-cell {
-        width: 12px;
-        height: 12px;
-        background-color: rgba(55, 65, 81, 0.3);
-        border: 1px solid rgba(75, 85, 99, 0.4);
-        border-radius: 2px;
-        transition: all 0.15s ease;
-        cursor: pointer;
+        width: 10px;
+        height: 10px;
     }
-
-    /* Inactive cells (outside date range) */
-    .day-cell.inactive {
-        background-color: transparent;
-        border-color: rgba(75, 85, 99, 0.15);
-        cursor: default;
+    
+    .day-label {
+        height: 10px;
+        font-size: 0.6rem;
+        line-height: 10px;
     }
-
-    /* Hover effects */
-    .day-cell:not(.inactive):hover {
-        transform: scale(1.4);
-        border-color: #60a5fa;
-        z-index: 10;
-        box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+    
+    .heatmap-grid,
+    .week-column {
+        gap: 2px;
     }
-
-    /* Activity color levels */
-    .day-cell.color-level-1 { 
-        background-color: #0e4429; 
-        border-color: #0e4429;
+    
+    .day-labels {
+        gap: 2px;
+        padding-top: 24px;
     }
-    .day-cell.color-level-2 { 
-        background-color: #006d32; 
-        border-color: #006d32;
+    
+    .month-label {
+        font-size: 0.65rem;
     }
-    .day-cell.color-level-3 { 
-        background-color: #26a641; 
-        border-color: #26a641;
-    }
-    .day-cell.color-level-4 { 
-        background-color: #39d353; 
-        border-color: #39d353;
-    }
-
-    /* Tooltip */
+    
     .heatmap-tooltip {
-        position: fixed;
-        background: rgba(0, 0, 0, 0.95);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        z-index: 10000;
-        pointer-events: none;
-        white-space: nowrap;
-        transform: translate(-50%, -100%);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .heatmap-tooltip::after {
-        content: '';
-        position: absolute;
-        bottom: -4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 4px solid rgba(0, 0, 0, 0.95);
-    }
-
-    /* Legend */
-    .heatmap-legend {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-top: 12px;
-        justify-content: flex-end;
-        flex-shrink: 0;
-    }
-
-    .legend-label {
         font-size: 0.7rem;
-        color: #9ca3af;
-        margin: 0 4px;
+        padding: 6px 10px;
     }
-
-    .legend-item {
-        display: flex;
-    }
-
-    /* Responsive breakpoints */
-    @media (max-width: 640px) {
-        .day-cell {
-            width: 10px;
-            height: 10px;
-        }
-        
-        .day-label {
-            height: 10px;
-            font-size: 0.6rem;
-            line-height: 10px;
-        }
-        
-        .heatmap-grid,
-        .week-column {
-            gap: 2px;
-        }
-        
-        .day-labels {
-            gap: 2px;
-            padding-top: 24px;
-        }
-        
-        .month-label {
-            font-size: 0.65rem;
-        }
-        
-        .heatmap-tooltip {
-            font-size: 0.7rem;
-            padding: 6px 10px;
-        }
-    }
-
-    @media (min-width: 641px) and (max-width: 1023px) {
-        .day-cell {
-            width: 11px;
-            height: 11px;
-        }
-        
-        .day-label {
-            height: 11px;
-            line-height: 11px;
-        }
-    }
-
-    @media (min-width: 1024px) {
-        .day-cell {
-            width: 13px;
-            height: 13px;
-        }
-        
-        .day-label {
-            height: 13px;
-            line-height: 13px;
-        }
-        
-        .heatmap-grid,
-        .week-column {
-            gap: 3px;
-        }
-    }
-
-    .task-fade-out {
-    transition: all 0.4s ease-out;
-    opacity: 0;
-    transform: scale(0.95);
-    height: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    overflow: hidden;
-    }
-    /* --- Styles for Gradient Shine Effect --- */
-    @keyframes gradient-shift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+    .day-cell {
+        width: 11px;
+        height: 11px;
     }
     
-    .shiny-button {
-        background-size: 400% 100%;
-        animation: gradient-shift 4s ease infinite;
-        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-        background-image: linear-gradient(90deg, #667eea, #764ba2, #667eea, #764ba2, #667eea);
+    .day-label {
+        height: 11px;
+        line-height: 11px;
+    }
+}
+@media (min-width: 1024px) {
+    .day-cell {
+        width: 13px;
+        height: 13px;
     }
     
-    .shiny-button:hover {
-        animation-duration: 2s; /* Speed up animation on hover */
-        transform: scale(1.05);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    .day-label {
+        height: 13px;
+        line-height: 13px;
     }
-    /* disable buttons on completed tasks */
-    .completed .timer-btn,
-    .completed .focus-btn,
-    .completed [data-subtask-index] {
-        opacity: 0.5;
-        cursor: not-allowed;
-        pointer-events: none; /* This physically prevents clicks */
+    
+    .heatmap-grid,
+    .week-column {
+        gap: 3px;
     }
-    @keyframes shimmer {
-        0% { transform: translateX(-100%) skewX(-12deg); }
-        100% { transform: translateX(200%) skewX(-12deg); }
-    }
-    .animate-shimmer {
-        animation: shimmer 2s infinite;
-    }
-    /* Mobile menu transitions */
+}
+.task-fade-out {
+transition: all 0.4s ease-out;
+opacity: 0;
+transform: scale(0.95);
+height: 0 !important;
+padding-top: 0 !important;
+padding-bottom: 0 !important;
+margin-top: 0 !important;
+margin-bottom: 0 !important;
+overflow: hidden;
+}
+/* --- Styles for Gradient Shine Effect --- */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.shiny-button {
+    background-size: 400% 100%;
+    animation: gradient-shift 4s ease infinite;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+    background-image: linear-gradient(90deg, #667eea, #764ba2, #667eea, #764ba2, #667eea);
+}
+
+.shiny-button:hover {
+    animation-duration: 2s; /* Speed up animation on hover */
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+/* disable buttons on completed tasks */
+.completed .timer-btn,
+.completed .focus-btn,
+.completed [data-subtask-index] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none; /* This physically prevents clicks */
+}
+@keyframes shimmer {
+    0% { transform: translateX(-100%) skewX(-12deg); }
+    100% { transform: translateX(200%) skewX(-12deg); }
+}
+.animate-shimmer {
+    animation: shimmer 2s infinite;
+}
+/* Mobile menu transitions */
 #mobile-menu {
     transition: transform 0.3s ease-in-out;
 }
@@ -752,24 +756,24 @@
 body.mobile-menu-open {
     overflow: hidden;
 }
-    #nav-buttons,
-    #mobile-menu-btn,
-    #add-task-btn,
-    #user-info {
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s ease-in, visibility 0.3s;
-    }
-    
-    body.auth-ready #nav-buttons,
-    body.auth-ready #mobile-menu-btn,
-    body.auth-ready #add-task-btn,
-    body.auth-ready #user-info {
-      opacity: 1;
-      visibility: visible;
-    }
-    
-    #sign-in-btn {
-      opacity: 1;
-      visibility: visible;
-    }
+#nav-buttons,
+#mobile-menu-btn,
+#add-task-btn,
+#user-info {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in, visibility 0.3s;
+}
+
+body.auth-ready #nav-buttons,
+body.auth-ready #mobile-menu-btn,
+body.auth-ready #add-task-btn,
+body.auth-ready #user-info {
+  opacity: 1;
+  visibility: visible;
+}
+
+#sign-in-btn {
+  opacity: 1;
+  visibility: visible;
+}

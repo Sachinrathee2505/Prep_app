@@ -90,7 +90,17 @@ if ('serviceWorker' in navigator) {
                 }
                 if (signInBtn) {
                     signInBtn.classList.remove('hidden');
-                    signInBtn.onclick = () => auth.signInWithPopup(provider);
+                    signInBtn.onclick = () => {
+                        // Show the loader
+                        document.getElementById('auth-loader-overlay')?.classList.remove('hidden');
+                        
+                        // Start the sign-in process
+                        auth.signInWithPopup(provider).catch(error => {
+                            // If user closes popup or sign-in fails, hide the loader
+                            console.warn("Sign-in popup closed or failed:", error.message);
+                            document.getElementById('auth-loader-overlay')?.classList.add('hidden');
+                        });
+                    };
                 }
                 if (addTaskBtn) {
                     addTaskBtn.classList.add('hidden');
@@ -102,6 +112,9 @@ if ('serviceWorker' in navigator) {
       // =================================================================================
 
             auth.onAuthStateChanged(async (user) => {
+                
+                document.getElementById('auth-loader-overlay')?.classList.add('hidden');
+
                 if (user) {
                     // ========================================
                     // USER IS LOGGED IN
