@@ -1446,7 +1446,7 @@ function createTaskCard(task) {
 }
 
       function renderSkillsDashboard() {
-        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Tree 🌳</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
+        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Rating Matrix</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
         const grid = document.getElementById('skills-grid');
         if (Object.keys(appState.skills).length === 0) {
           grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
@@ -2067,3 +2067,4 @@ function createTaskCard(task) {
             // Implementation for exporting report as PDF or CSV
             showToast('Report exported successfully!');
         }
+
