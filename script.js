@@ -2,22 +2,14 @@ import { auth, db, provider, firebase } from './js/firebase.js';
 import {
     showToast,
     showUndoToast,
-    closeModal,
-    getWeekRange,
     playSound,
-    hexToRgba,
-    convertSecondsToMinutes,
-    formatHours,
-    formatTime,
-    triggerConfettiAnimation,
-    getCompletionRate,
-    getCategoryName
 } from './js/utils.js';
 import { StreakTracker } from './js/streak.js';
 import { ConnectionManager } from './js/connection.js';
 import { FocusMode } from './js/focus.js';
-new ConnectionManager;
 import { AchievementSystem } from './js/achievements.js';
+import { UI } from './js/ui.js';
+new ConnectionManager;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
        navigator.serviceWorker.register('sw.js')
@@ -39,78 +31,61 @@ if ('serviceWorker' in navigator) {
      };
       let focusMode = null;
       let achievementSystem = null;
-      const motivationalQuotes = [
-        "The best way to predict the future is to create it.",
-        "Success is the sum of small efforts, repeated day in and day out.",
-        "The secret of getting ahead is getting started."
-      ];
+      let ui = null;
       const mainContent = document.getElementById('main-content');
       const modalContainer = document.getElementById('modal-container');
       const navDashboard = document.getElementById('nav-dashboard');
       const navSkills = document.getElementById('nav-skills');
+      const signInBtn = document.getElementById('sign-in-btn');
+        if (signInBtn) {
+            signInBtn.onclick = () => {
+                document.getElementById('auth-loader-overlay')?.classList.remove('hidden');
+                auth.signInWithPopup(provider).catch(error => {
+                    console.warn("Sign-in popup closed or failed:", error.message);
+                    document.getElementById('auth-loader-overlay')?.classList.add('hidden');
+                });
+            };
+        }
 
-      function updateNavigationVisibility(isLoggedIn) {
-            const navButtons = document.getElementById('nav-buttons');
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const userInfo = document.getElementById('user-info');
-            const signInBtn = document.getElementById('sign-in-btn');
-            const addTaskBtn = document.getElementById('add-task-btn');
-            
-            document.body.classList.add('auth-ready');
-            
-            if (isLoggedIn) {
-                // LOGGED IN STATE
-                if (navButtons) {
-                    navButtons.className = 'hidden lg:flex items-center space-x-4';
-                    navButtons.style.opacity = '1';
-                    navButtons.style.visibility = 'visible';
-                }
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.classList.remove('hidden');
-                    mobileMenuBtn.classList.add('flex', 'lg:hidden');
-                    mobileMenuBtn.style.opacity = '1';
-                    mobileMenuBtn.style.visibility = 'visible';
-                }
-                if (userInfo) {
-                    userInfo.classList.remove('hidden');
-                    userInfo.classList.add('flex');
-                }
-                if (signInBtn) {
-                    signInBtn.classList.add('hidden');
-                }
-                if (addTaskBtn) {
-                    addTaskBtn.classList.remove('hidden');
-                }
-            } else {
-                // LOGGED OUT STATE
-                if (navButtons) {
-                    navButtons.className = 'hidden';
-                }
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.classList.add('hidden');
-                }
-                if (userInfo) {
-                    userInfo.classList.add('hidden');
-                }
-                if (signInBtn) {
-                    signInBtn.classList.remove('hidden');
-                    signInBtn.onclick = () => {
-                        // Show the loader
-                        document.getElementById('auth-loader-overlay')?.classList.remove('hidden');
-                        
-                        // Start the sign-in process
-                        auth.signInWithPopup(provider).catch(error => {
-                            // If user closes popup or sign-in fails, hide the loader
-                            console.warn("Sign-in popup closed or failed:", error.message);
-                            document.getElementById('auth-loader-overlay')?.classList.add('hidden');
-                        });
-                    };
-                }
-                if (addTaskBtn) {
-                    addTaskBtn.classList.add('hidden');
-                }
-            }
-      }
+// Initialize the master UI controller
+ui = new UI({
+    appState: appState,
+    auth: auth,
+    mainContent: mainContent,
+    modalContainer: modalContainer
+});
+
+// We must re-create the global functions that the empty-state HTML
+// and weekly report modal need to work
+window.handleQuickAction = (action) => {
+    const uid = auth.currentUser.uid;
+    switch(action) {
+        case 'addTask':
+            ui.showTaskModal(db.collection('users').doc(uid).collection('tasks'));
+            break;
+        case 'importTasks':
+            showToast("Import feature coming soon!"); // This util is still global
+            break;
+        case 'viewStats':
+            ui.navigate('insights');
+            break;
+        case 'viewActive':
+            appState.activeFilter = 'active';
+            ui.render();
+            break;
+        case 'viewCompleted':
+            appState.activeFilter = 'completed';
+            ui.render();
+            break;
+    }
+};
+
+window.updateMobileUserInfo = () => {
+    if (ui) {
+        ui.updateMobileUserInfo();
+    }
+};
+
       // =================================================================================
       // SECTION 3: CORE AUTH LOGIC (THE APP'S BRAIN)
       // =================================================================================
@@ -197,7 +172,7 @@ if ('serviceWorker' in navigator) {
                                     });
 
                                     console.log('✅ User profile created:', focusAreas);
-                                    updateNavigationVisibility(true);
+                                    ui.updateNavigationVisibility(true);
                                     // Hide modal
                                     onboardingModal.classList.add('hidden');
 
@@ -244,7 +219,7 @@ if ('serviceWorker' in navigator) {
                                 document.getElementById('onboarding-modal').classList.remove('hidden');
                                 return;
                             }
-                            updateNavigationVisibility(true);
+                            ui.updateNavigationVisibility(true);
                             if (window.updateMobileUserInfo) {
                                 window.updateMobileUserInfo();
                             }
@@ -281,7 +256,7 @@ if ('serviceWorker' in navigator) {
                     // ========================================
                     console.log('🔓 User logged out');
                     
-                    updateNavigationVisibility(false);
+                    ui.updateNavigationVisibility(false);
 
                     // Reset app state
                     appState = { 
@@ -299,7 +274,7 @@ if ('serviceWorker' in navigator) {
 
                     // Show logged out message
                     if (mainContent) {
-                        mainContent.innerHTML = `
+                        ui.mainContent.innerHTML = `
                             <div class="text-center p-8 bg-gray-800 rounded-lg">
                                 <div class="text-6xl mb-4">👋</div>
                                 <h2 class="text-2xl font-bold text-cyan-400 mb-2">Welcome to Level Up Hub</h2>
@@ -361,105 +336,25 @@ if ('serviceWorker' in navigator) {
             userMenu.classList.add('hidden');
             achievementSystem.renderAchievementsPage();
         };
-        document.getElementById('add-task-btn').onclick = () => showTaskModal(tasksCollection);
-        document.getElementById('report-btn').onclick = () => showWeeklyReportModal(db.collection('users').doc(user.uid).collection('timeLogs'), tasksCollection);
-        document.getElementById('home-link').onclick = (e) => { e.preventDefault(); navigate('dashboard'); };
+        document.getElementById('add-task-btn').onclick = () => ui.showTaskModal(tasksCollection);
+        document.getElementById('report-btn').onclick = () => ui.showWeeklyReportModal(db.collection('users').doc(user.uid).collection('timeLogs'), tasksCollection);
+        document.getElementById('home-link').onclick = (e) => { e.preventDefault(); ui.navigate('dashboard'); };
         
-        mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, db.collection('users').doc(user.uid).collection('timeLogs'), achievementSystem, streakTracker);
+        mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, db.collection('users').doc(user.uid).collection('timeLogs'));
         
-        navDashboard.onclick = () => navigate('dashboard');
-        navSkills.onclick = () => navigate('skills');
-        document.getElementById('nav-insights').onclick = () => navigate('insights');
+        navDashboard.onclick = () => ui.navigate('dashboard');
+        navSkills.onclick = () => ui.navigate('skills');
+        document.getElementById('nav-insights').onclick = () => ui.navigate('insights');
         
         // Perform initial setup
-        navigate('dashboard');
-        add3DTiltEffect();
+        ui.navigate('dashboard');
+        ui.add3DTiltEffect();
       }
       // Mobile Menu Toggle Logic
-        function initializeMobileMenu() {
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const mobileMenuClose = document.getElementById('mobile-menu-close');
-            const mobileMenu = document.getElementById('mobile-menu');
-            const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
-            
-            // Open mobile menu
-            mobileMenuBtn?.addEventListener('click', () => {
-                mobileMenu.classList.remove('hidden');
-                mobileMenuOverlay.classList.remove('hidden');
-                setTimeout(() => {
-                    mobileMenu.classList.remove('translate-x-full');
-                }, 10);
-            });
-            
-            // Close mobile menu
-            const closeMobileMenu = () => {
-                mobileMenu.classList.add('translate-x-full');
-                setTimeout(() => {
-                    mobileMenu.classList.add('hidden');
-                    mobileMenuOverlay.classList.add('hidden');
-                }, 300);
-            };
-            
-            mobileMenuClose?.addEventListener('click', closeMobileMenu);
-            mobileMenuOverlay?.addEventListener('click', closeMobileMenu);
-            
-            // Mobile navigation buttons
-            document.getElementById('mobile-nav-dashboard')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('nav-dashboard')?.click();
-            });
-            
-            document.getElementById('mobile-nav-skills')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('nav-skills')?.click();
-            });
-            
-            document.getElementById('mobile-nav-insights')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('nav-insights')?.click();
-            });
-            
-            document.getElementById('mobile-report-btn')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('report-btn')?.click();
-            });
-            
-            document.getElementById('mobile-achievements-btn')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('achievements-btn')?.click();
-            });
-            
-            document.getElementById('mobile-sign-out-btn')?.addEventListener('click', () => {
-                closeMobileMenu();
-                document.getElementById('sign-out-btn')?.click();
-            });
-            
-            // Update mobile menu when user info changes
-            const updateMobileUserInfo = () => {
-                const userPic = document.getElementById('user-pic')?.src;
-                const userName = document.getElementById('user-name')?.textContent;
-                const streakCount = document.getElementById('streak-count')?.textContent;
-                
-                if (userPic) document.getElementById('mobile-user-pic').src = userPic;
-                if (userName) document.getElementById('mobile-user-name').textContent = userName;
-                if (streakCount) document.getElementById('mobile-streak-count').textContent = streakCount;
-                
-                // Show/hide mobile user section
-                const mobileUserSection = document.getElementById('mobile-user-section');
-                const userInfo = document.getElementById('user-info');
-                if (userInfo && !userInfo.classList.contains('hidden')) {
-                    mobileUserSection.classList.remove('hidden');
-                } else {
-                    mobileUserSection.classList.add('hidden');
-                }
-            };
-            
-            // Call this after user authentication
-            window.updateMobileUserInfo = updateMobileUserInfo;
-        }
+
 
         // Initialize on DOM load
-        document.addEventListener('DOMContentLoaded', initializeMobileMenu);
+        document.addEventListener('DOMContentLoaded', ui.initializeMobileMenu);
 
       function attachDataListeners(tasksCollection, skillsCollection) {
         
@@ -468,315 +363,19 @@ if ('serviceWorker' in navigator) {
             if (appState.isLoading) {
                 appState.isLoading = false;
             }
-            render();
+            ui.render();
             });
 
             skillsCollection.onSnapshot(snapshot => {
             appState.skills = {};
             snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
-            if (appState.currentView === 'skills') render();
+            if (appState.currentView === 'skills') ui.render();
             });
         }
-
-// =================================================================================
-// SECTION 5: HELPER CLASSES 
-// =================================================================================
-        async function renderActivityHeatmap(tasksCollection) {
-            const heatmap = document.getElementById('activity-heatmap');
-            if (!heatmap) return;
-
-            try {
-                // 1. Calculate responsive date range
-                const endDate = new Date();
-                const startDate = new Date();
-                
-                // Adjust days based on screen size
-                const isMobile = window.innerWidth < 640;
-                const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
-                const daysToShow = isMobile ? 90 : isTablet ? 120 : 180;
-                
-                startDate.setDate(endDate.getDate() - daysToShow);
-
-                // 2. Fetch completed tasks
-                const tasksSnapshot = await tasksCollection
-                    .where('completed', '==', true)
-                    .get();
-
-                // 3. Process data with null checks
-                const completionData = {};
-                
-                tasksSnapshot.forEach(doc => {
-                    const task = doc.data();
-                    
-                    if (!task.completedAt) {
-                        console.warn('⚠️ Task has no completedAt date:', doc.id);
-                        return;
-                    }
-                    
-                    let completedDate;
-                    try {
-                        completedDate = task.completedAt.toDate ? 
-                            task.completedAt.toDate() : 
-                            new Date(task.completedAt);
-                    } catch (error) {
-                        console.warn('⚠️ Invalid completedAt format:', doc.id);
-                        return;
-                    }
-                    
-                    if (completedDate >= startDate && completedDate <= endDate) {
-                        const dateString = completedDate.toISOString().split('T')[0];
-                        completionData[dateString] = (completionData[dateString] || 0) + 1;
-                    }
-                });
-
-                // 4. Build week-based grid structure
-                heatmap.innerHTML = '';
-                
-                // Add wrapper for scrolling
-                const wrapper = document.createElement('div');
-                wrapper.className = 'heatmap-wrapper';
-                
-                // Add container for better layout control
-                const container = document.createElement('div');
-                container.className = 'heatmap-container';
-                
-                // Create tooltip element (persistent, hidden by default)
-                const tooltip = document.createElement('div');
-                tooltip.className = 'heatmap-tooltip';
-                tooltip.style.display = 'none';
-                document.body.appendChild(tooltip); // Append to body for proper positioning
-                
-                // Calculate weeks - start from first Sunday
-                const weeks = [];
-                let currentDate = new Date(startDate);
-                
-                // Move to the previous Sunday
-                while (currentDate.getDay() !== 0) {
-                    currentDate.setDate(currentDate.getDate() - 1);
-                }
-                
-                const adjustedStartDate = new Date(currentDate);
-                
-                // Calculate total days needed (until we pass endDate)
-                while (currentDate <= endDate) {
-                    const week = [];
-                    for (let i = 0; i < 7; i++) {
-                        const dateString = currentDate.toISOString().split('T')[0];
-                        const count = completionData[dateString] || 0;
-                        const isInRange = currentDate >= startDate && currentDate <= endDate;
-                        
-                        week.push({
-                            date: new Date(currentDate),
-                            dateString,
-                            count,
-                            isInRange,
-                            dayOfWeek: currentDate.getDay()
-                        });
-                        
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
-                    weeks.push(week);
-                }
-
-                // 5. Render day labels (Sun-Sat) - Fixed position
-                const dayLabels = document.createElement('div');
-                dayLabels.className = 'day-labels';
-                const days = isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                days.forEach(day => {
-                    const label = document.createElement('span');
-                    label.className = 'day-label';
-                    label.textContent = day;
-                    dayLabels.appendChild(label);
-                });
-                container.appendChild(dayLabels);
-
-                // 6. Create grid content wrapper
-                const gridWrapper = document.createElement('div');
-                gridWrapper.className = 'grid-wrapper';
-
-                // 7. Render month labels
-                const monthLabels = document.createElement('div');
-                monthLabels.className = 'month-labels';
-                monthLabels.style.gridTemplateColumns = `repeat(${weeks.length}, 1fr)`;
-                
-                let lastMonth = -1;
-                
-                weeks.forEach((week, weekIndex) => {
-                    const firstDay = week[0].date;
-                    const month = firstDay.getMonth();
-                    
-                    // Show month label at the start of each month
-                    if (month !== lastMonth && week[0].isInRange) {
-                        const label = document.createElement('span');
-                        label.className = 'month-label';
-                        label.textContent = firstDay.toLocaleDateString('en-US', { month: 'short' });
-                        label.style.gridColumn = `${weekIndex + 1}`;
-                        monthLabels.appendChild(label);
-                        lastMonth = month;
-                    }
-                });
-                
-                gridWrapper.appendChild(monthLabels);
-
-                // 8. Render grid
-                const grid = document.createElement('div');
-                grid.className = 'heatmap-grid';
-                grid.style.gridTemplateColumns = `repeat(${weeks.length}, 1fr)`;
-                
-                // Create columns for each week
-                weeks.forEach(week => {
-                    const weekColumn = document.createElement('div');
-                    weekColumn.className = 'week-column';
-                    
-                    // Add all 7 days
-                    week.forEach(day => {
-                        const count = day.count;
-                        let colorLevel = 0;
-                        if (count > 0) colorLevel = 1;
-                        if (count >= 3) colorLevel = 2;
-                        if (count >= 5) colorLevel = 3;
-                        if (count >= 8) colorLevel = 4;
-
-                        const cell = document.createElement('div');
-                        cell.className = 'day-cell';
-                        
-                        // Mark cells outside the range as inactive
-                        if (!day.isInRange) {
-                            cell.classList.add('inactive');
-                        } else if (colorLevel > 0) {
-                            cell.classList.add(`color-level-${colorLevel}`);
-                        }
-                        
-                        // Enhanced tooltip content
-                        const dateStr = day.date.toLocaleDateString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric',
-                            year: 'numeric'
-                        });
-                        
-                        const tooltipText = !day.isInRange ? dateStr :
-                            count === 0 ? `No tasks on ${dateStr}` : 
-                            `${count} task${count !== 1 ? 's' : ''} completed on ${dateStr}`;
-                        
-                        // Desktop hover - show tooltip
-                        cell.addEventListener('mouseenter', (e) => {
-                            tooltip.textContent = tooltipText;
-                            tooltip.style.display = 'block';
-                            
-                            // Position tooltip above the cell
-                            const rect = cell.getBoundingClientRect();
-                            tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-                            tooltip.style.top = `${rect.top - 10}px`;
-                        });
-                        
-                        cell.addEventListener('mouseleave', () => {
-                            tooltip.style.display = 'none';
-                        });
-                        
-                        // Mobile tap - show temporary tooltip
-                        cell.addEventListener('click', (e) => {
-                            if (isMobile) {
-                                tooltip.textContent = tooltipText;
-                                tooltip.style.display = 'block';
-                                
-                                const rect = cell.getBoundingClientRect();
-                                tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-                                tooltip.style.top = `${rect.top - 10}px`;
-                                
-                                setTimeout(() => {
-                                    tooltip.style.display = 'none';
-                                }, 2000);
-                            }
-                        });
-                        
-                        weekColumn.appendChild(cell);
-                    });
-                    
-                    grid.appendChild(weekColumn);
-                });
-                
-                gridWrapper.appendChild(grid);
-                container.appendChild(gridWrapper);
-
-                // 9. Add legend
-                const legend = document.createElement('div');
-                legend.className = 'heatmap-legend';
-                legend.innerHTML = `
-                    <span class="legend-label">${isMobile ? 'Less' : 'Activity:'}</span>
-                    <div class="legend-item">
-                        <div class="day-cell"></div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="day-cell color-level-1"></div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="day-cell color-level-2"></div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="day-cell color-level-3"></div>
-                    </div>
-                    <div class="legend-item">
-                        <div class="day-cell color-level-4"></div>
-                    </div>
-                    <span class="legend-label">${isMobile ? 'More' : ''}</span>
-                `;
-                container.appendChild(legend);
-                
-                wrapper.appendChild(container);
-                heatmap.appendChild(wrapper);
-                
-                console.log(`✅ Activity heatmap rendered (${daysToShow} days, ${weeks.length} weeks)`);
-                
-            } catch (error) {
-                console.error('❌ Error rendering activity heatmap:', error);
-                heatmap.innerHTML = `
-                    <div class="text-center text-gray-400 py-4">
-                        <p>Unable to load activity data</p>
-                        <p class="text-xs mt-2">${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-
-        // Re-render on window resize
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                const tasksCollection = db.collection('users').doc(auth.currentUser?.uid).collection('tasks');
-                renderActivityHeatmap(tasksCollection);
-            }, 300);
-        });
 
       // =================================================================================
       // SECTION 6: EVENT HANDLERS
       // =================================================================================
-      async function handleFormSubmit(e, tasksCollection) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const taskData = {
-          type: formData.get('type'),
-          title: formData.get('title'),
-          dueDate: formData.get('dueDate'),
-          priority: formData.get('priority'),
-          category: formData.get('category'),
-          url: formData.get('url'),
-          skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
-          completed: false,
-          createdAt: new Date().toISOString(),
-          totalTimeLogged: 0,
-          timerRunning: false,
-          lastStartTime: null
-        };
-        if (taskData.type === 'project') {
-          taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
-        }
-        await tasksCollection.add(taskData);
-        closeModal();
-        showToast('Task added successfully!');
-      }
-
       async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
             const card = e.target.closest('.task-card');
             if (!card) return;
@@ -851,7 +450,7 @@ if ('serviceWorker' in navigator) {
                         });
 
                         // Show skill rating modal
-                        showSkillRatingModal(task, skillsCollection);
+                        ui.showSkillRatingModal(task, skillsCollection);
 
                         // Success notification
                         if (typeof showToast === 'function') {
@@ -875,7 +474,7 @@ if ('serviceWorker' in navigator) {
                     }
 
                     // Refresh UI
-                    renderDashboard();
+                    ui.renderDashboard();
                 } catch (error) {
                     console.error('❌ Error updating task:', error);
                     // Revert checkbox state on error
@@ -904,7 +503,7 @@ if ('serviceWorker' in navigator) {
 
                     if (allSubtasksCompleted && typeof confetti === 'function') {
                         console.log("🎉 Project complete! Firing confetti!");
-                        confetti({
+                        ui.confetti({
                             particleCount: 150,
                             spread: 90,
                             origin: { y: 0.6 }
@@ -917,7 +516,7 @@ if ('serviceWorker' in navigator) {
                     });
 
                     // Refresh UI
-                    renderDashboard();
+                    ui.renderDashboard();
 
                 } catch (error) {
                     console.error('❌ Error updating subtask:', error);
@@ -941,7 +540,7 @@ if ('serviceWorker' in navigator) {
                 appState.tasks.splice(taskIndex, 1);
                 
                 // 2. Immediately re-render (card disappears instantly)
-                renderDashboard();
+                ui.renderDashboard();
                 if (typeof updateStats === 'function') updateStats();
 
                 // 3. Set up delayed permanent deletion
@@ -950,7 +549,7 @@ if ('serviceWorker' in navigator) {
                         console.error("❌ Error during final deletion:", err);
                         // If deletion fails, restore the task
                         appState.tasks.splice(taskIndex, 0, removedTask);
-                        renderDashboard();
+                        ui.renderDashboard();
                         if (typeof updateStats === 'function') updateStats();
                         showToast("Error: Could not delete task.");
                     });
@@ -965,7 +564,7 @@ if ('serviceWorker' in navigator) {
                     appState.tasks.splice(taskIndex, 0, removedTask);
                     
                     // Re-render to show the card again
-                    renderDashboard();
+                    ui.renderDashboard();
                     if (typeof updateStats === 'function') updateStats();
                     
                     console.log("✅ Task deletion undone");
@@ -1018,7 +617,7 @@ if ('serviceWorker' in navigator) {
                     Object.assign(task, updates);
 
                     // Refresh UI
-                    renderDashboard();
+                    ui.renderDashboard();
 
                 } catch (error) {
                     console.error('❌ Error updating timer:', error);
@@ -1040,1031 +639,3 @@ if ('serviceWorker' in navigator) {
                 }
             }
         }
-
-      // =================================================================================
-      // SECTION 7: FIRESTORE LOGIC
-      // =================================================================================
-      async function updateSkill(skillName, rating, skillsCollection) {
-        const skillRef = skillsCollection.doc(skillName);
-        return db.runTransaction(async (transaction) => {
-          const skillDoc = await transaction.get(skillRef);
-          if (!skillDoc.exists) {
-            transaction.set(skillRef, { name: skillName, totalConfidence: rating, count: 1 });
-          } else {
-            const newCount = skillDoc.data().count + 1;
-            const newTotalConfidence = skillDoc.data().totalConfidence + rating;
-            transaction.update(skillRef, { count: newCount, totalConfidence: newTotalConfidence });
-          }
-        });
-      }
-
-      // =================================================================================
-      // SECTION 8: UI RENDERING, MODALS, AND UTILITIES
-      // =================================================================================
-        const emptyStates = {
-            default: { title: "Ready to Level Up?", description: "Your dashboard is clear. Click the '+' button to add your first task and start your journey.", icon: "start" },
-            completed: { title: "No Completed Tasks Yet", description: "Complete some tasks to see them here and earn your rewards!", icon: "trophy" },
-            active: { title: "All Tasks Completed! 🎉", description: "Great job! You've completed all your tasks. Add new ones to keep the momentum going.", icon: "checkmark" },
-            overdue: { title: "You're All Caught Up!", description: "No overdue tasks. Keep up the great work!", icon: "clock" }
-        };
-
-        function renderEmptyState(state = 'default') {
-            const currentState = emptyStates[state] || emptyStates.default;
-            return `
-                <div class="flex flex-col items-center justify-center h-full text-center p-8">
-                    <svg class="w-16 h-16 text-gray-600 mb-4 transform hover:scale-110 transition-transform" fill="currentColor"><use xlink:href="#icon-${currentState.icon}"></use></svg>
-                    <h2 class="text-2xl font-bold text-white mb-2">${currentState.title}</h2>
-                    <p class="text-gray-400 max-w-sm mb-6">${currentState.description}</p>
-                    ${getQuickActions(state)}
-                    ${getMotivationalElement(state)}
-                </div>
-            `;
-        };
-
-        function getQuickActions(filter) {
-            const actions = {
-                default: [ { label: 'Add Task', icon: 'plus', action: 'addTask' }, { label: 'Import Tasks', icon: 'import', action: 'importTasks' } ],
-                completed: [ { label: 'View Active Tasks', icon: 'list', action: 'viewActive' }, { label: 'View Statistics', icon: 'chart', action: 'viewStats' } ],
-                active: [ { label: 'Add New Task', icon: 'plus', action: 'addTask' }, { label: 'View Completed', icon: 'check', action: 'viewCompleted' } ],
-                overdue: []
-            };
-            const actionButtons = actions[filter] || actions.default;
-            return `<div class="flex gap-4 mt-4">${actionButtons.map(action => `<button onclick="handleQuickAction('${action.action}')" class="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><svg class="w-4 h-4 mr-2"><use xlink:href="#icon-${action.icon}"></use></svg>${action.label}</button>`).join('')}</div>`;
-        };
-
-        function getMotivationalElement(filter) {
-            if (filter === 'completed') {
-                const rate = getCompletionRate();
-                return `<div class="mt-6 bg-gray-800 rounded-lg p-4 w-full max-w-sm"><div class="text-sm text-gray-400">Your Progress</div><div class="flex items-center gap-4 mt-2"><div class="flex-1"><div class="h-2 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width: ${rate}%"></div></div></div><div class="text-white font-medium">${rate}%</div></div></div>`;
-            }
-            return '';
-        };
-
-
-        // Make this function global so the inline onclick can find it
-        window.handleQuickAction = (action) => {
-            switch(action) {
-                case 'addTask':
-                    showTaskModal(db.collection('users').doc(auth.currentUser.uid).collection('tasks'));
-                    break;
-                case 'importTasks':
-                    showToast("Import feature coming soon!"); // Placeholder
-                    break;
-                case 'viewStats':
-                    navigate('insights');
-                    break;
-                case 'viewActive':
-                    appState.activeFilter = 'active';
-                    render();
-                    break;
-                case 'viewCompleted':
-                    appState.activeFilter = 'completed';
-                    render();
-                    break;
-            }
-        };
-
-      function navigate(view) {
-        appState.currentView = view;
-        navDashboard.classList.toggle('bg-gray-700', view === 'dashboard');
-        navDashboard.classList.toggle('text-white', view === 'dashboard');
-        navSkills.classList.toggle('bg-gray-700', view === 'skills');
-        navSkills.classList.toggle('text-white', view === 'skills');
-        document.getElementById('nav-insights').classList.toggle('bg-gray-700', view === 'insights');
-        document.getElementById('nav-insights').classList.toggle('text-white', view === 'insights');
-        render();
-      }
-      function renderSkeletons() {
-          mainContent.innerHTML = `
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  ${Array(6).fill('').map(() => `
-                      <div class="col-span-1 bg-gray-800 rounded-lg p-4">
-                          <div class="skeleton-card">
-                              <div class="skeleton" style="height: 20px; width: 75%; margin-bottom: 1rem;"></div>
-                              <div class="skeleton" style="height: 14px; width: 50%;"></div>
-                          </div>
-                      </div>
-                  `).join('')}
-              </div>
-          `;
-      }
-
-function createShatterEffect(cardElement) {
-    const rect = cardElement.getBoundingClientRect();
-
-    // Create a container for the particles at the exact same position as the card
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = `${rect.left}px`;
-    container.style.top = `${rect.top}px`;
-    container.style.width = `${rect.width}px`;
-    container.style.height = `${rect.height}px`;
-    container.style.zIndex = '100'; // Make sure it's on top
-    document.body.appendChild(container);
-
-    // Hide the original card so we only see the animation
-    cardElement.style.opacity = '0';
-
-    // Create a grid of particles
-    const gridSize = 10;
-    for (let i = 0; i < gridSize; i++) {
-        for (let j = 0; j < gridSize; j++) {
-            const particle = document.createElement('div');
-            particle.style.position = 'absolute';
-            particle.style.left = `${(i / gridSize) * 100}%`;
-            particle.style.top = `${(j / gridSize) * 100}%`;
-            particle.style.width = `${100 / gridSize}%`;
-            particle.style.height = `${100 / gridSize}%`;
-            particle.style.background = 'rgb(75 85 99)'; // Corresponds to bg-gray-700
-            container.appendChild(particle);
-        }
-    }
-
-    // Use anime.js to animate the particles
-    anime({
-        targets: container.children,
-        translateX: () => anime.random(-100, 100),
-        translateY: () => anime.random(-150, 50),
-        scale: () => anime.random(0.2, 0.8),
-        opacity: [1, 0],
-        delay: anime.stagger(20, {from: 'center'}),
-        duration: 800,
-        easing: 'easeOutExpo',
-        // When the animation is complete, remove the particle container
-        complete: () => {
-            container.remove();
-        }
-    });
-}
-
-function add3DTiltEffect() {
-    const mainGrid = document.querySelector('#main-content');
-    if (!mainGrid) return;
-    let lastTransformLayer = null;
-
-    mainGrid.addEventListener('mousemove', e => {
-        const card = e.target.closest('.task-card');
-        const currentLayer = card ? card.querySelector('.card-transform-layer') : null;
-
-        if (lastTransformLayer && lastTransformLayer !== currentLayer) {
-            lastTransformLayer.style.transform = `translateZ(0) rotateX(0deg) rotateY(0deg)`;
-        }
-
-        if (currentLayer) {
-            const rect = currentLayer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const rotateX = (y - centerY) / 15; // A little less intense
-            const rotateY = (centerX - x) / 15;
-
-            currentLayer.style.setProperty('--mouse-x', `${x}px`);
-            currentLayer.style.setProperty('--mouse-y', `${y}px`);
-            currentLayer.style.transform = `translateZ(20px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-
-            lastTransformLayer = currentLayer;
-        } else {
-            lastTransformLayer = null;
-        }
-    });
-
-    mainGrid.addEventListener('mouseleave', () => {
-        if (lastTransformLayer) {
-            lastTransformLayer.style.transform = `translateZ(0) rotateX(0deg) rotateY(0deg)`;
-            lastTransformLayer = null;
-        }
-    });
-}
-
-      function render() {
-        if (appState.currentView === 'dashboard') renderDashboard();
-
-        else if (appState.currentView === 'skills') renderSkillsDashboard();
-        else if (appState.currentView === 'insights') {
-            const uid = auth.currentUser.uid;
-            renderInsightsDashboard(
-                db.collection('users').doc(uid).collection('timeLogs'),
-                db.collection('users').doc(uid).collection('tasks')
-            );
-        }
-      }
-
-    function renderDashboard() {
-        if (appState.isLoading) {
-            renderSkeletons();
-            return;
-        }
-        if (!appState.userCategories || appState.userCategories.length === 0) {
-            mainContent.innerHTML = `<div class="text-center p-8"><p class="text-gray-400">Loading your personalized dashboard...</p></div>`;
-            return;
-        }
-
-        cleanupTimers();
-
-        const columnsHTML = appState.userCategories.map(cat => `
-            <div id="col-${cat.id}" class="bg-gray-800 rounded-lg p-4">
-                <h2 class="text-lg font-bold mb-4" style="color: ${cat.color};">${cat.icon || '🎯'} ${cat.name}</h2>
-                <div class="space-y-4"></div>
-            </div>
-        `).join('');
-
-        mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-${appState.userCategories.length} gap-6">${columnsHTML}</div>`;
-        
-        // Filter and prepare tasks to render
-        let tasksToRender = [];
-        if (appState.activeFilter === 'completed') {
-            tasksToRender = appState.tasks.filter(t => t.completed);
-        } else {
-            const { startOfWeek } = getWeekRange(new Date());
-            const overdue = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) < startOfWeek);
-            const thisWeek = appState.tasks.filter(t => !t.completed && new Date(t.dueDate) >= startOfWeek);
-            tasksToRender = [...overdue, ...thisWeek];
-        }
-
-        // Handle the empty state
-        if (tasksToRender.length === 0) {
-            let stateKey = appState.activeFilter;
-            if (appState.tasks.length === 0) stateKey = 'default';
-            mainContent.innerHTML = renderEmptyState(stateKey);
-            if (stateKey === 'active') triggerConfettiAnimation();
-            updateAlertBanner();
-            return; 
-        }
-        
-        // Render the task cards into the dynamic columns
-        tasksToRender.forEach(task => {
-            const column = mainContent.querySelector(`#col-${task.category} .space-y-4`);
-            if (column) {
-                column.appendChild(createTaskCard(task));
-            } else {
-                // Fallback for tasks with old category names
-                const firstColumn = mainContent.querySelector('.space-y-4');
-                if(firstColumn) firstColumn.appendChild(createTaskCard(task));
-            }
-        });
-
-        updateAlertBanner();
-        setupTimers();
-    }
-
-function cleanupTimers() {
-    // Clear task timers
-    if (appState.timers) {
-        Object.values(appState.timers).forEach(timerId => {
-            if (timerId) clearInterval(timerId);
-        });
-        appState.timers = {};
-    }
-    
-    // ✅ Clear focus mode timer if exists
-    if (focusMode && focusMode.interval) {
-        clearInterval(focusMode.interval);
-        focusMode.interval = null;
-    }
-    
-    console.log('✅ All timers cleaned up');
-}
-
-function updateAlertBanner() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const dueTodayOrOverdue = appState.tasks.filter(t => {
-        if (t.completed) return false;
-        const dueDate = new Date(t.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        return dueDate <= today;
-    });
-
-    const alertBanner = document.getElementById('alert-banner');
-    if (!alertBanner) return;
-    
-    alertBanner.classList.toggle('hidden', dueTodayOrOverdue.length === 0);
-    if (dueTodayOrOverdue.length > 0) {
-        alertBanner.textContent = `🔔 You have ${dueTodayOrOverdue.length} task(s) due today or overdue!`;
-    }
-}
-
-function setupTimers() {
-    appState.tasks
-        .filter(t => t.timerRunning)
-        .forEach(task => {
-            const card = document.querySelector(`.task-card[data-id="${task.id}"]`);
-            const timerDisplay = card?.querySelector('.timer-display');
-            
-            if (!timerDisplay) return;
-
-            appState.timers[task.id] = setInterval(() => {
-                if (!task.lastStartTime?.toDate) return;
-
-                const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
-                const totalTime = (task.totalTimeLogged || 0) + elapsed;
-                
-                const h = Math.floor(totalTime / 3600);
-                const m = Math.floor((totalTime % 3600) / 60);
-                const s = totalTime % 60;
-
-                timerDisplay.textContent = [h, m, s]
-                    .map(n => String(n).padStart(2, '0'))
-                    .join(':');
-            }, 1000);
-        });
-}
-
-function toggleUserMenu() {
-    const menu = document.getElementById('user-menu');
-    const button = document.getElementById('user-menu-button');
-    const isHidden = menu.classList.contains('hidden');
-    
-    menu.classList.toggle('hidden');
-    button.setAttribute('aria-expanded', !isHidden);
-}
-
-function createTaskCard(task) {
-    const card = document.createElement('div');
-    let cardClasses = 'task-card relative';
-    if (task.priority === 'High') {
-        cardClasses += ' priority-high';
-    }
-    card.className = cardClasses;
-    card.dataset.id = task.id;
-
-    const totalTime = task.totalTimeLogged || 0;
-    const timeDisplay = `${String(Math.floor(totalTime / 3600)).padStart(2, '0')}:${String(Math.floor((totalTime % 3600) / 60)).padStart(2, '0')}:${String(totalTime % 60).padStart(2, '0')}`;
-
-    const categoryObj = appState.userCategories?.find(c => c.id === task.category);
-    const categoryName = categoryObj ? categoryObj.name : "Uncategorized";
-    const categoryIcon = categoryObj ? categoryObj.icon : "📋";
-
-    let projectHTML = '';
-
-    if (task.type === 'project' && task.subtasks) {
-        const completedSubtasks = task.subtasks.filter(st => st.completed).length;
-        const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
-        projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
-    }
-
-    card.innerHTML = `
-        <div class="card-transform-layer"></div>
-
-        <div class="card-content relative z-10 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
-
-            <div class="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                <span>${categoryIcon}</span> ${categoryName}
-            </div>
-
-            <div class="flex justify-between items-start">
-                <div class="flex-grow">
-                    <h3 class="font-bold">${task.title}</h3>
-                    <p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>
-                    ${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}
-                    <div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div>
-                </div>
-                <div class="flex-shrink-0 relative z-20">
-                    <input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}>
-                    <div class="starburst-container absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 pointer-events-none"></div>
-                </div>
-            </div>
-            ${projectHTML}
-            <div class="mt-4 flex justify-between items-center text-sm">
-                <div class="flex items-center space-x-2">
-                    <button class="timer-btn p-1 rounded-md ${task.timerRunning ? 'bg-red-500' : 'bg-green-500'} hover:opacity-80" title="${task.timerRunning ? 'Stop Timer' : 'Start Timer'}">${task.timerRunning ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>'}</button>
-                    <button class="focus-btn p-1 rounded-md bg-purple-500 hover:opacity-80" title="Start Focus Session">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
-                    <span class="timer-display font-mono">${timeDisplay}</span>
-                </div>
-                <button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-            </div>
-        </div>`;
-
-    return card;
-}
-
-      function renderSkillsDashboard() {
-        mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Rating Matrix</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
-        const grid = document.getElementById('skills-grid');
-        if (Object.keys(appState.skills).length === 0) {
-          grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
-          return;
-        }
-        Object.values(appState.skills).sort((a,b) => (a.totalConfidence / a.count) - (b.totalConfidence / b.count)).forEach(skill => {
-          const average = skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
-          const skillCard = document.createElement('div');
-          skillCard.className = 'bg-gray-700 p-4 rounded-lg flex flex-col justify-between';
-          skillCard.innerHTML = `<div><h3 class="font-bold text-lg">${skill.name}</h3><p class="text-sm text-gray-400">Rated ${skill.count} time(s)</p></div><div class="mt-4"><p class="text-sm text-gray-300">Confidence: ${average.toFixed(1)} / 5.0</p><div class="w-full bg-gray-600 rounded-full h-2.5 mt-1"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${average / 5 * 100}%"></div></div></div>`;
-          grid.appendChild(skillCard);
-        });
-      }
-
-        function showTaskModal(tasksCollection) {
-            const categories = appState.userCategories || [];
-            const categoryOptions = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-
-            modalContainer.innerHTML = `
-                <div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
-                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                        <form id="task-form">
-                            <h2 class="text-xl font-bold mb-4">Add New Item</h2>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="task-type" class="block text-sm font-medium text-gray-300">Type</label>
-                                    <select id="task-type" name="type" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                        <option value="task">Standard Task</option>
-                                        <option value="project">Project</option>
-                                        <option value="study_topic">Study Topic</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="task-title" class="block text-sm font-medium text-gray-300">Title</label>
-                                    <input type="text" id="task-title" name="title" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                </div>
-                                <div id="project-subtasks-container" class="hidden">
-                                    <label class="block text-sm font-medium text-gray-300">Sub-tasks</label>
-                                    <div id="subtasks-list" class="space-y-2 mt-1"></div>
-                                    <button type="button" id="add-subtask-btn" class="mt-2 text-sm text-cyan-400 hover:underline">+ Add sub-task</button>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="task-due-date" class="block text-sm font-medium text-gray-300">Due Date</label>
-                                        <input type="date" id="task-due-date" name="dueDate" required class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                    </div>
-                                    <div>
-                                        <label for="task-priority" class="block text-sm font-medium text-gray-300">Priority</label>
-                                        <select id="task-priority" name="priority" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                            <option>High</option>
-                                            <option selected>Medium</option>
-                                            <option>Low</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="task-category" class="block text-sm font-medium text-gray-300">Category</label>
-                                    <select id="task-category" name="category" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                        ${categoryOptions} 
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="task-url" class="block text-sm font-medium text-gray-300">Resource URL (Optional)</label>
-                                    <input type="url" id="task-url" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                </div>
-                                <div>
-                                    <label for="task-skills" class="block text-sm font-medium text-gray-300">Skills (comma-separated)</label>
-                                    <input type="text" id="task-skills" name="skills" placeholder="e.g., React, Python, CUDA" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 mt-1 focus:ring-cyan-500 focus:border-cyan-500">
-                                </div>
-                            </div>
-                            <div class="mt-6 flex justify-end space-x-4">
-                                <button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button>
-                                <button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">Add Item</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('cancel-task-btn').onclick = closeModal;
-            document.getElementById('task-form').onsubmit = (e) => handleFormSubmit(e, tasksCollection);
-            
-            const taskTypeSelect = document.getElementById('task-type');
-            const subtasksContainer = document.getElementById('project-subtasks-container');
-            taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
-            
-            document.getElementById('add-subtask-btn').onclick = () => {
-                const subtaskList = document.getElementById('subtasks-list');
-                const newSubtask = document.createElement('div');
-                newSubtask.className = 'flex items-center space-x-2';
-                newSubtask.innerHTML = `<input type="text" class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" placeholder="Sub-task description"><button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>`;
-                subtaskList.appendChild(newSubtask);
-                newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
-            };
-        }
-
-      async function showSkillRatingModal(task, skillsCollection) {
-        if (!task.skills || task.skills.length === 0) return;
-        modalContainer.innerHTML = `<div id="skill-rating-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"><h2 class="text-xl font-bold mb-4">Rate Your Confidence</h2><p class="mb-4 text-gray-300">How confident do you feel with these skills after completing "${task.title}"?</p><div id="skills-to-rate" class="space-y-4">${task.skills.map(skill => `<div class="skill-rating-item" data-skill="${skill}"><label class="block font-medium text-gray-200">${skill}</label><div class="star-rating flex items-center space-x-1 text-2xl text-gray-500 mt-1" data-rating="0">${[1,2,3,4,5].map(i => `<svg data-value="${i}" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>`).join('')}</div></div>`).join('')}</div><div class="mt-6 flex justify-end"><button id="submit-ratings-btn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Submit Ratings</button></div></div></div>`;
-        document.querySelectorAll('.star-rating').forEach(ratingContainer => {
-          const stars = ratingContainer.querySelectorAll('svg');
-          ratingContainer.onmouseover = e => { if (e.target.tagName === 'svg') { const hoverValue = e.target.dataset.value; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= hoverValue)); } };
-          ratingContainer.onmouseout = () => { const currentRating = ratingContainer.dataset.rating; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= currentRating)); };
-          ratingContainer.onclick = e => { if (e.target.tagName === 'svg') { ratingContainer.dataset.rating = e.target.dataset.value; } };
-        });
-        document.getElementById('submit-ratings-btn').onclick = async () => {
-          const ratings = Array.from(document.querySelectorAll('.skill-rating-item')).map(item => ({ skill: item.dataset.skill, rating: parseInt(item.querySelector('.star-rating').dataset.rating) }));
-          const validRatings = ratings.filter(r => r.rating > 0);
-          if (validRatings.length > 0) await Promise.all(validRatings.map(r => updateSkill(r.skill, r.rating, skillsCollection)));
-          closeModal();
-        };
-      }
-      async function renderInsightsDashboard(timeLogsCollection, tasksCollection) {
-           try {
-             const userProfile = appState.userProfile;
-             const userId = auth.currentUser?.uid;
-
-             if (!userProfile || !userId) {
-                showError('User profile not loaded');
-                return;
-             }
-             console.log('🎯 YOUR FOCUS AREAS:', JSON.stringify(userProfile.focusAreas, null, 2));
-              // Set up initial UI
-              mainContent.innerHTML = `
-                  <div class="bg-gray-800 rounded-lg p-6">
-                      <h2 class="text-2xl font-bold mb-6 text-cyan-400">Insights Dashboard</h2>
-                      <div class="max-w-md mx-auto">
-                          <h3 class="text-lg font-semibold text-center mb-4">Total Time Allocation</h3>
-                          <canvas id="timeAllocationChart"></canvas>
-                      </div>
-                      <div class="mt-8">
-                          <h3 class="text-lg font-semibold text-center mb-4">Daily Activity Heatmap</h3>
-                          <div id="activity-heatmap" class="activity-heatmap">
-                            </div>
-                     </div>                      
-                      <div id="chart-error" class="hidden text-red-400 text-center mt-4"></div>
-                  </div>
-              `;
-
-              // Fetch and process time logs
-              const timeData = await fetchTimeData(userId, userProfile);
-              
-              // Create and render chart
-              await createChart(timeData, userProfile);
-              renderActivityHeatmap(tasksCollection);
-              
-            } 
-            catch (error) {
-                console.error('Error rendering insights dashboard:', error);
-                showError('Failed to load insights dashboard. Please try again later.');
-            }
-        }
-
-        async function fetchTimeData(userId, userProfile) {
-            // ✅ Get focus areas from userProfile
-            const focusAreas = userProfile?.focusAreas || [];
-
-            if (!Array.isArray(focusAreas) || focusAreas.length === 0) {
-                console.warn("⚠️ No focus areas found. Returning empty dataset.");
-                return {};
-            }
-
-            const timeData = {};
-
-            // ✅ Initialize all categories with 0 time
-            focusAreas.forEach(area => {
-                timeData[area.id] = 0;
-            });
-
-            // ✅ CREATE MAPPING: Old category names → New focus area IDs
-            const categoryMapping = createCategoryMapping(focusAreas);
-            console.log('📋 Category mapping:', categoryMapping);
-
-            try {
-                // ✅ Fetch from user's subcollection
-                const logsSnapshot = await db.collection('users')
-                    .doc(userId)
-                    .collection('timeLogs')
-                    .get();
-
-                logsSnapshot.forEach(doc => {
-                    const log = doc.data();
-
-                    // Get category from log (might be old or new format)
-                    let catId = log.categoryId || log.category;
-                    const duration = Number(log.duration) || 0;
-
-                    // ✅ Try to map old category names to new IDs
-                    if (catId && !timeData.hasOwnProperty(catId)) {
-                        const mappedId = categoryMapping[catId.toLowerCase()];
-                        if (mappedId) {
-                            console.log(`🔄 Mapped old category "${catId}" → "${mappedId}"`);
-                            catId = mappedId;
-                        }
-                    }
-
-                    // Add duration to the correct category
-                    if (catId && timeData.hasOwnProperty(catId)) {
-                        timeData[catId] += Math.max(0, duration);
-                    } else {
-                        console.warn('⚠️ Skipping unknown category:', catId, 'in log:', doc.id);
-                    }
-                });
-
-                console.log('✅ Final Processed Time Data:', timeData);
-                return timeData;
-
-            } catch (error) {
-                console.error('❌ Error fetching time data:', error);
-                throw new Error(`Failed to fetch time logs: ${error.message}`);
-            }
-        }
-
-        function createCategoryMapping(focusAreas) {
-            // Direct mapping: assumes focus_1, focus_2, focus_3 exist
-            return {
-                'fullstack': 'focus_1',   // Old fullstack → first focus area
-                'mitx': 'focus_2',        // Old mitx → second focus area
-                'nvidia': 'focus_3'       // Old nvidia → third focus area
-            };
-        }
-
-
-        async function createChart(timeData, userProfile) {
-            const canvas = document.getElementById('timeAllocationChart');
-            if (!canvas) {
-                throw new Error('Canvas element not found');
-            }
-
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                throw new Error('Failed to get canvas context');
-            }
-
-            // ✅ Resolve categories from userProfile
-            const focusAreas = userProfile?.focusAreas || [];
-            if (focusAreas.length === 0) {
-                throw new Error('No focus areas found in user profile');
-            }
-
-            // ✅ Generate labels & data
-            const labels = focusAreas.map(area => area.name);
-            
-            const data = focusAreas.map(area => {
-                let raw = timeData[area.id] || 0;
-
-                // Handle string format like "2h 30m"
-                if (typeof raw === "string") {
-                    return convertToMinutes(raw);
-                }
-
-                // Handle numeric seconds
-                if (typeof raw === "number") {
-                    return Math.round(raw / 60);  // Convert seconds to minutes
-                }
-
-                return 0;
-            });
-
-            // ✅ Color setup
-            const backgroundColor = focusAreas.map(area => hexToRgba(area.color || '#6B7280', 0.7));
-            const borderColor = focusAreas.map(area => area.color || '#6B7280');
-
-            const chartConfig = {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Time Spent (in minutes)',
-                        data: data,
-                        backgroundColor: backgroundColor,
-                        borderColor: borderColor,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: { 
-                                color: '#d1d5db',
-                                font: { size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => {
-                                    const minutes = context.raw;
-                                    const hours = Math.floor(minutes / 60);
-                                    const mins = minutes % 60;
-                                    return `${hours}h ${mins}m (${minutes} total minutes)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            // ✅ Destroy previous chart instance if exists
-            if (window.timeChartInstance) {
-                window.timeChartInstance.destroy();
-            }
-
-            try {
-                window.timeChartInstance = new Chart(ctx, chartConfig);
-                return window.timeChartInstance;
-            } catch (error) {
-                throw new Error(`Failed to create chart: ${error.message}`);
-            }
-        }
-
-
-
-        function showError(message) {
-            const errorDiv = document.getElementById('chart-error');
-            if (errorDiv) {
-                errorDiv.textContent = message;
-                errorDiv.classList.remove('hidden');
-            }
-        }
-
-        async function showWeeklyReportModal(timeLogsCollection, tasksCollection) {
-            const { startOfWeek, endOfWeek } = getWeekRange(new Date());
-            
-            // ✅ Get user profile for categories
-            const userProfile = appState.userProfile;
-            if (!userProfile || !userProfile.focusAreas) {
-                showToast('User profile not loaded', 'error');
-                return;
-            }
-            modalContainer.innerHTML = `
-                    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
-                        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <div class="flex justify-between items-center mb-6">
-                                <h2 class="text-2xl font-bold">Weekly Progress Report</h2>
-                                <span class="text-sm text-gray-400">${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}</span>
-                            </div>
-                            
-                            <div id="report-loading-state" class="text-center py-10">
-                                <svg class="animate-spin h-8 w-8 text-cyan-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <p class="mt-4 text-gray-400">Generating your report...</p>
-                            </div>
-
-                            <div id="report-content-area" class="hidden"></div>
-
-                            <div class="flex justify-end mt-6">
-                                <button id="close-report-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>`;
-            document.getElementById('close-report-btn').onclick = closeModal;
-            
-            const [logsSnapshot, tasksSnapshot] = await Promise.all([
-                // Query 1: Time logs
-                timeLogsCollection
-                    .where('timestamp', '>=', startOfWeek)
-                    .where('timestamp', '<=', endOfWeek)
-                    .get(),
-                
-                // Query 2: Completed tasks
-                tasksCollection
-                    .where('completed', '==', true)
-                    .where('completedAt', '>=', startOfWeek)
-                    .where('completedAt', '<=', endOfWeek)
-                    .get()
-            ]);
-            // ✅ Initialize weeklyData dynamically from user's focus areas
-            const weeklyData = {};
-            userProfile.focusAreas.forEach(area => {
-                weeklyData[area.id] = 0;
-            });
-            
-            const dailyData = {};
-            
-            // ✅ Use category mapping for old logs
-            const categoryMapping = createCategoryMapping(userProfile.focusAreas);
-            
-            logsSnapshot.forEach(doc => {
-                const log = doc.data();
-                
-                // ✅ Get category with mapping support
-                let catId = log.categoryId || log.category;
-                
-                // Try to map old categories
-                if (catId && !weeklyData.hasOwnProperty(catId)) {
-                    const mappedId = categoryMapping[catId.toLowerCase()];
-                    if (mappedId) catId = mappedId;
-                }
-                
-                if (catId && weeklyData.hasOwnProperty(catId)) {
-                    weeklyData[catId] += Number(log.duration) || 0;
-                }
-                
-                // Track daily time
-                const logDate = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
-                const dayIndex = logDate.getDay();  // 0 = Sunday, 1 = Monday, etc.
-                
-                // ✅ Map to consistent day names
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const day = dayNames[dayIndex];
-                
-                if (!dailyData[day]) dailyData[day] = 0;
-                dailyData[day] += Number(log.duration) || 0;
-            });
-
-            // Calculate statistics
-            const totalTime = Object.values(weeklyData).reduce((sum, time) => sum + time, 0);
-            const completedTasks = tasksSnapshot.size;
-            const avgTimePerTask = completedTasks > 0 ? Math.round(totalTime / completedTasks) : 0;
-            
-            // Find most productive day
-            const mostProductiveDay = Object.entries(dailyData).reduce((max, [day, time]) => 
-                time > (max.time || 0) ? { day, time } : max, {});
-
-            const formatTime = (seconds) => {
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                return `${hours}h ${minutes}m`;
-            };
-
-            const formatPercentage = (value, total) => {
-                return total > 0 ? Math.round((value / total) * 100) : 0;
-            };
-
-            const reportContentArea = document.getElementById('report-content-area');
-            const reportLoadingState = document.getElementById('report-loading-state');
-
-            reportContentArea.innerHTML = `
-                        <!-- Summary Stats -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div class="bg-gray-700 rounded-lg p-4 text-center">
-                                <div class="text-2xl font-bold text-cyan-400">${formatTime(totalTime)}</div>
-                                <div class="text-sm text-gray-400">Total Time</div>
-                            </div>
-                            <div class="bg-gray-700 rounded-lg p-4 text-center">
-                                <div class="text-2xl font-bold text-green-400">${completedTasks}</div>
-                                <div class="text-sm text-gray-400">Tasks Completed</div>
-                            </div>
-                            <div class="bg-gray-700 rounded-lg p-4 text-center">
-                                <div class="text-2xl font-bold text-yellow-400">${formatTime(avgTimePerTask)}</div>
-                                <div class="text-sm text-gray-400">Avg per Task</div>
-                            </div>
-                            <div class="bg-gray-700 rounded-lg p-4 text-center">
-                                <div class="text-2xl font-bold text-purple-400">${mostProductiveDay.day || 'N/A'}</div>
-                                <div class="text-sm text-gray-400">Most Productive</div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3">
-                            ${userProfile.focusAreas.map(area => {
-                                const areaTime = weeklyData[area.id] || 0;
-                                const percentage = formatPercentage(areaTime, totalTime);
-                                
-                                return `
-                                    <div>
-                                        <div class="flex justify-between items-center mb-1">
-                                            <h4 class="font-medium" style="color: ${area.color}">
-                                                ${area.icon} ${area.name}
-                                            </h4>
-                                            <span class="font-mono text-sm">
-                                                ${formatTime(areaTime)} (${percentage}%)
-                                            </span>
-                                        </div>
-                                        <div class="w-full bg-gray-700 rounded-full h-2">
-                                            <div class="h-2 rounded-full transition-all duration-500" 
-                                                style="width: ${percentage}%; background-color: ${area.color}">
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-
-                        <!-- Daily Activity Chart -->
-                        <div class="mb-6 bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                            <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                                <span>📊</span> Daily Activity
-                            </h3>
-                            
-                            <!-- ✅ White background chart area for maximum contrast -->
-                            <div class="flex justify-between items-end h-48 gap-3 px-4 py-3 bg-gray-950 rounded-lg">
-                                ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
-                                    const dayTime = dailyData[day] || 0;
-                                    const allDayValues = Object.values(dailyData).filter(v => v > 0);
-                                    const maxDayTime = allDayValues.length > 0 ? Math.max(...allDayValues) : 1;
-                                    const heightPercent = Math.round((dayTime / maxDayTime) * 100);
-                                    const displayHeight = dayTime > 0 ? Math.max(heightPercent, 12) : 0;
-                                    const today = new Date().getDay();
-                                    const isToday = today === index;
-                                    
-                                    return `
-                                        <div class="flex-1 flex flex-col items-center justify-end h-full group relative">
-                                            <!-- ✅ SUPER VISIBLE Bar -->
-                                            <div class="w-full rounded-t-xl transition-all duration-300 hover:scale-110 relative overflow-hidden
-                                                ${dayTime > 0 
-                                                    ? 'bg-gradient-to-t from-cyan-600 via-cyan-500 to-cyan-400 shadow-2xl shadow-cyan-500/60 ring-2 ring-cyan-400/20' 
-                                                    : 'bg-gray-800 border border-gray-700'
-                                                }" 
-                                                style="height: ${displayHeight}%; min-height: ${dayTime > 0 ? '12px' : '4px'};">
-                                                
-                                                <!-- Animated shimmer effect -->
-                                                ${dayTime > 0 ? `
-                                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
-                                                        -skew-x-12 group-hover:animate-shimmer"></div>
-                                                ` : ''}
-                                            </div>
-                                            
-                                            <!-- Day Label -->
-                                            <div class="text-center mt-3">
-                                                <span class="text-sm font-bold transition-all duration-300
-                                                    ${isToday ? 'text-cyan-400 scale-110' : dayTime > 0 ? 'text-gray-300' : 'text-gray-600'}">
-                                                    ${day}
-                                                </span>
-                                                ${isToday ? '<div class="w-1 h-1 bg-cyan-400 rounded-full mx-auto mt-1"></div>' : ''}
-                                            </div>
-                                            
-                                            <!-- Tooltip -->
-                                            <div class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 
-                                                transition-opacity bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-xl 
-                                                whitespace-nowrap z-10 border border-cyan-500/30">
-                                                <div class="font-mono text-cyan-400">${formatTime(dayTime)}</div>
-                                                <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 
-                                                    w-2 h-2 bg-gray-900 rotate-45 border-r border-b border-cyan-500/30"></div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                            
-                            <!-- Stats Summary -->
-                            <div class="mt-4 flex justify-between items-center text-sm">
-                                <div class="text-gray-400">
-                                    Total: <span class="text-white font-mono">${formatTime(Object.values(dailyData).reduce((a, b) => a + b, 0))}</span>
-                                </div>
-                                <div class="text-gray-400">
-                                    Average: <span class="text-white font-mono">${formatTime(Math.round(Object.values(dailyData).reduce((a, b) => a + b, 0) / 7))}</span>/day
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Insights -->
-                        <div class="bg-gray-700 rounded-lg p-4 mb-6">
-                            <h3 class="text-lg font-semibold mb-2">Weekly Insights(Suggestion)</h3>
-                            <ul class="space-y-2 text-sm">
-                                ${generateInsights(weeklyData, totalTime, completedTasks, mostProductiveDay)}
-                            </ul>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="flex justify-between">
-                            <button onclick="exportWeeklyReport()" 
-                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                Export Report
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-
-            if (reportLoadingState) reportLoadingState.classList.add('hidden');
-            if (reportContentArea) reportContentArea.classList.remove('hidden');
-            
-            document.getElementById('close-report-btn').onclick = closeModal;
-            
-            // Animate progress bars after modal opens
-            setTimeout(() => {
-                document.querySelectorAll('.bg-green-400, .bg-blue-400, .bg-purple-400').forEach(bar => {
-                    bar.style.width = bar.style.width;
-                });
-            }, 100);
-        }
-
-        function generateInsights(weeklyData, totalTime, completedTasks, mostProductiveDay) {
-            const insights = [];
-            
-            // Most focused category
-            const categories = Object.entries(weeklyData);
-            const mostFocused = categories.reduce((max, [cat, time]) => 
-                time > max.time ? { category: cat, time } : max, { time: 0 });
-            
-            if (mostFocused.category) {
-                insights.push(`💡 You spent most time on <span class="font-semibold">${getCategoryName(mostFocused.category, appState)}</span> this week`);
-            }
-            
-            // Productivity insight
-            if (completedTasks > 10) {
-                insights.push(`🚀 Great productivity! You completed ${completedTasks} tasks`);
-            } else if (completedTasks > 0) {
-                insights.push(`📈 You completed ${completedTasks} tasks. Try to increase this next week`);
-            }
-            
-            // Balance insight
-            const balance = Math.min(...categories.map(([_, time]) => time)) / Math.max(...categories.map(([_, time]) => time));
-            if (balance > 0.5) {
-                insights.push(`⚖️ Good balance across all categories`);
-            } else {
-                insights.push(`⚠️ Consider balancing time across categories more evenly`);
-            }
-            
-            // Most productive day
-            if (mostProductiveDay.day) {
-                insights.push(`📅 ${mostProductiveDay.day} was your most productive day`);
-            }
-            
-            return insights.map(insight => `<li>${insight}</li>`).join('');
-        }
-
-        async function exportWeeklyReport() {
-            // Implementation for exporting report as PDF or CSV
-            showToast('Report exported successfully!');
-        }
-
