@@ -41,9 +41,9 @@
 </head>
 
 <body class="bg-gray-900 text-gray-100 font-sans antialiased">
-  <div id="auth-loader-overlay" class="hidden">
-      <div class="loader-spinner"></div>
-  </div>
+    <div id="auth-loader-overlay" class="hidden">
+        <div class="loader-spinner"></div>
+    </div>
   <svg style="display: none;">
     <defs>
         <symbol id="icon-start" viewBox="0 0 20 20" fill="currentColor">
@@ -149,6 +149,14 @@
                             <span id="streak-count" class="text-sm font-bold text-white">0</span>
                         </div>
                         <div class="border-t border-gray-600"></div>
+                        <li role="menuitem">
+                            <button id="toggle-tasks-btn" class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-200 hover:bg-gray-700">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                            </svg>
+                            Show Completed Tasks
+                            </button>
+                        </li>
                         <a href="#" 
                         id="achievements-btn" 
                         class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-600" 
@@ -287,6 +295,4 @@
           </div>
   </div>
 </body>
-
 </html>
-

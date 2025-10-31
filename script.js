@@ -336,6 +336,21 @@ window.updateMobileUserInfo = () => {
             userMenu.classList.add('hidden');
             achievementSystem.renderAchievementsPage();
         };
+        const toggleTasksBtn = document.getElementById('toggle-tasks-btn');
+        toggleTasksBtn.onclick = () => {
+            userMenu.classList.add('hidden'); // Close the menu
+
+            if (appState.activeFilter === 'active') {
+                appState.activeFilter = 'completed';
+                // Update button text (we need to get the text node)
+                toggleTasksBtn.lastChild.nodeValue = ' Show Active Tasks';
+            } else {
+                appState.activeFilter = 'active';
+                toggleTasksBtn.lastChild.nodeValue = ' Show Completed Tasks';
+            }
+            
+            ui.render(); // Re-render the dashboard
+        };
         document.getElementById('add-task-btn').onclick = () => ui.showTaskModal(tasksCollection);
         document.getElementById('report-btn').onclick = () => ui.showWeeklyReportModal(db.collection('users').doc(user.uid).collection('timeLogs'), tasksCollection);
         document.getElementById('home-link').onclick = (e) => { e.preventDefault(); ui.navigate('dashboard'); };
@@ -389,6 +404,10 @@ window.updateMobileUserInfo = () => {
 
                 try {
                     if (isCompleted) {
+                        // Success notification
+                        if (typeof showToast === 'function') {
+                            showToast('Task completed! 🎉', 'success');
+                        }
                         // Initialize updates object
                         const updates = {
                             completed: true,
@@ -452,12 +471,10 @@ window.updateMobileUserInfo = () => {
                         // Show skill rating modal
                         ui.showSkillRatingModal(task, skillsCollection);
 
-                        // Success notification
-                        if (typeof showToast === 'function') {
-                            showToast('Task completed! 🎉', 'success');
-                        }
-
                     } else {
+                        if (typeof showToast === 'function') {
+                            showToast('Task reopened', 'success');
+                        }
                         // ✅ UNCOMPLETE - Reopening task
                         await tasksCollection.doc(taskId).update({
                             completed: false,
@@ -468,9 +485,6 @@ window.updateMobileUserInfo = () => {
                         task.completed = false;
                         task.completedAt = null;
 
-                        if (typeof showToast === 'function') {
-                            showToast('Task reopened', 'success');
-                        }
                     }
 
                     // Refresh UI
