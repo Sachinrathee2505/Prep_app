@@ -208,6 +208,17 @@ export class UI {
     // --- Dashboard Rendering ---
 
     renderDashboard() {
+        const activeFilter = this.appState.activeFilter;
+        const filterHTML = `
+            <div class="flex mb-4 border border-gray-700 rounded-lg p-1 max-w-xs">
+                <button id="filter-active" class="flex-1 px-4 py-2 rounded-md text-sm font-medium ${activeFilter === 'active' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:bg-gray-700'} transition-colors">
+                    Active
+                </button>
+                <button id="filter-completed" class="flex-1 px-4 py-2 rounded-md text-sm font-medium ${activeFilter === 'completed' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:bg-gray-700'} transition-colors">
+                    Completed
+                </button>
+            </div>
+        `;
         if (this.appState.isLoading) {
             this.renderSkeletons();
             return;
@@ -227,7 +238,6 @@ export class UI {
         `).join('');
 
         this.mainContent.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-${this.appState.userCategories.length} gap-6">${columnsHTML}</div>`;
-        
         let tasksToRender = [];
         if (this.appState.activeFilter === 'completed') {
             tasksToRender = this.appState.tasks.filter(t => t.completed);
@@ -240,6 +250,9 @@ export class UI {
 
         if (tasksToRender.length === 0) {
             let stateKey = this.appState.activeFilter;
+            if (this.appState.tasks.length === 0 && this.appState.activeFilter === 'active') {
+                stateKey = 'default';
+            }
             if (this.appState.tasks.length === 0) stateKey = 'default';
             this.mainContent.innerHTML = this.renderEmptyState(stateKey);
             if (stateKey === 'active') triggerConfettiAnimation();
@@ -504,8 +517,8 @@ export class UI {
     _getQuickActions(filter) {
         const actions = {
             default: [ { label: 'Add Task', icon: 'plus', action: 'addTask' }, { label: 'Import Tasks', icon: 'import', action: 'importTasks' } ],
-            completed: [ { label: 'View Active Tasks', icon: 'list', action: 'viewActive' }, { label: 'View Statistics', icon: 'chart', action: 'viewStats' } ],
-            active: [ { label: 'Add New Task', icon: 'plus', action: 'addTask' }, { label: 'View Completed', icon: 'check', action: 'viewCompleted' } ],
+            completed: [{ label: 'View Statistics', icon: 'chart', action: 'viewStats' } ],
+            active: [ { label: 'Add New Task', icon: 'plus', action: 'addTask' } ],
             overdue: []
         };
         const actionButtons = actions[filter] || actions.default;

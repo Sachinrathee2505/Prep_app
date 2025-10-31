@@ -111,7 +111,7 @@ function triggerConfettiAnimation() {
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
 };
 
-function getCompletionRate() {
+function getCompletionRate(appState) {
     const total = appState.tasks.length;
     if (total === 0) return 0;
     const completed = appState.tasks.filter(t => t.completed).length;
