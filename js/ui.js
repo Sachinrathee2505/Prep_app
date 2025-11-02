@@ -208,17 +208,6 @@ export class UI {
     // --- Dashboard Rendering ---
 
     renderDashboard() {
-        const activeFilter = this.appState.activeFilter;
-        const filterHTML = `
-            <div class="flex mb-4 border border-gray-700 rounded-lg p-1 max-w-xs">
-                <button id="filter-active" class="flex-1 px-4 py-2 rounded-md text-sm font-medium ${activeFilter === 'active' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:bg-gray-700'} transition-colors">
-                    Active
-                </button>
-                <button id="filter-completed" class="flex-1 px-4 py-2 rounded-md text-sm font-medium ${activeFilter === 'completed' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:bg-gray-700'} transition-colors">
-                    Completed
-                </button>
-            </div>
-        `;
         if (this.appState.isLoading) {
             this.renderSkeletons();
             return;
