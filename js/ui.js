@@ -335,7 +335,14 @@ export class UI {
                         </button>
                         <span class="timer-display font-mono">${timeDisplay}</span>
                     </div>
-                    <button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    <div>
+                        <button class="edit-btn text-gray-400 hover:text-cyan-400 p-1 rounded-md" title="Edit Task">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                        <button class="delete-btn text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </div>
                 </div>
             </div>`;
     
@@ -902,7 +909,7 @@ export class UI {
 
     // --- Modal Functions ---
 
-    async _handleFormSubmit(e, tasksCollection) {
+    async _handleFormSubmit(e, tasksCollection, taskId=null) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const taskData = {
@@ -913,29 +920,38 @@ export class UI {
           category: formData.get('category'),
           url: formData.get('url'),
           skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
-          completed: false,
-          createdAt: new Date().toISOString(),
-          totalTimeLogged: 0,
-          timerRunning: false,
-          lastStartTime: null
         };
-        if (taskData.type === 'project') {
-          taskData.subtasks = Array.from(document.querySelectorAll('.subtask-input')).map(input => ({ text: input.value, completed: false })).filter(st => st.text);
-        }
-        await tasksCollection.add(taskData);
-        closeModal();
-        showToast('Task added successfully!');
+
+        if (taskId) {
+            await tasksCollection.doc(taskId).update(taskData);
+            closeModal();
+            showToast('Task updated successfully!');
+        } else {
+            taskData.completed = false;
+            taskData.createdAt = new Date().toISOString();
+            taskData.totalTimeLogged = 0;
+            taskData.timerRunning = false;
+            taskData.lastStartTime = null;
+
+            await tasksCollection.add(taskData);
+            closeModal();
+            showToast('Task added successfully!');
+        } 
     }
 
-    showTaskModal(tasksCollection) {
+    showTaskModal(tasksCollection, taskToEdit = null) {
         const categories = this.appState.userCategories || [];
         const categoryOptions = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+
+        const isEditing = taskToEdit !== null;
+        const modalTitle = isEditing ? "Edit Task" : "Add New Item";
+        const buttonText = isEditing ? "Save Changes" : "Add Item";
 
         this.modalContainer.innerHTML = `
             <div id="task-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
                 <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
                     <form id="task-form">
-                        <h2 class="text-xl font-bold mb-4">Add New Item</h2>
+                        <h2 class="text-xl font-bold mb-4">${modalTitle}</h2>
                         <div class="space-y-4">
                             <div>
                                 <label for="task-type" class="block text-sm font-medium text-gray-300">Type</label>
@@ -985,12 +1001,14 @@ export class UI {
                         </div>
                         <div class="mt-6 flex justify-end space-x-4">
                             <button type="button" id="cancel-task-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md">Cancel</button>
-                            <button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">Add Item</button>
-                        </div>
+                            <button type="submit" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold">${buttonText}</button>                        </div>
                     </form>
                 </div>
             </div>
         `;
+
+        const taskId = isEditing ? taskToEdit.id : null;
+        document.getElementById('task-form').onsubmit = (e) => this._handleFormSubmit(e, tasksCollection, taskId);
         
         document.getElementById('cancel-task-btn').onclick = closeModal;
         document.getElementById('task-form').onsubmit = (e) => this._handleFormSubmit(e, tasksCollection);
