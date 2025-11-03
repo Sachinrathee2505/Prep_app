@@ -485,6 +485,14 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         }
         return; 
     }
+
+    // ✅ EDIT BUTTON - Open modal with task data
+    if (e.target.closest('.edit-btn')) {
+        // We pass the full task object to the modal function
+        ui.showTaskModal(tasksCollection, task);
+        return; 
+    }
+
     // ✅ DELETE BUTTON 
     if (e.target.closest('.delete-btn')) {
         playSound('assets/delete.mp3');
