@@ -1009,9 +1009,17 @@ export class UI {
 
         const taskId = isEditing ? taskToEdit.id : null;
         document.getElementById('task-form').onsubmit = (e) => this._handleFormSubmit(e, tasksCollection, taskId);
+        if (isEditing) {
+            document.getElementById('task-type').value = taskToEdit.type;
+            document.getElementById('task-title').value = taskToEdit.title;
+            document.getElementById('task-due-date').value = taskToEdit.dueDate;
+            document.getElementById('task-priority').value = taskToEdit.priority;
+            document.getElementById('task-category').value = taskToEdit.category;
+            document.getElementById('task-url').value = taskToEdit.url || '';
+            document.getElementById('task-skills').value = (taskToEdit.skills || []).join(', ');
+        }
         
         document.getElementById('cancel-task-btn').onclick = closeModal;
-        document.getElementById('task-form').onsubmit = (e) => this._handleFormSubmit(e, tasksCollection);
         
         const taskTypeSelect = document.getElementById('task-type');
         const subtasksContainer = document.getElementById('project-subtasks-container');
