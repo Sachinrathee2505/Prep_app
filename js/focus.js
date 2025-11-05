@@ -147,7 +147,14 @@ export class FocusMode {
     tick() {
         this.elapsed = Date.now() - this.startTime;
         this.updateDisplay();
-
+        const seconds = Math.floor(this.elapsed / 1000);
+        if (seconds % 10 === 0 && (this.elapsed % 1000) < 250) { // Update once per 10s
+            const motivationEl = document.getElementById('focusMotivation');
+            if (motivationEl) {
+                const newMotivation = this.motivations[Math.floor(Math.random() * this.motivations.length)];
+                motivationEl.textContent = newMotivation;
+            }
+        }
         if (this.elapsed >= this.targetMinutes * 60 * 1000) {
         this.endSession(true); // Mark task as complete
         }
