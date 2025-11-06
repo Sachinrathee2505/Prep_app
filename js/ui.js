@@ -921,6 +921,16 @@ export class UI {
           url: formData.get('url'),
           skills: formData.get('skills').split(',').map(s => s.trim()).filter(Boolean),
         };
+        if (taskData.type === 'project') {
+        const subtaskInputs = e.target.querySelectorAll('.subtask-input');
+        taskData.subtasks = Array.from(subtaskInputs)
+            .map((input, index) => ({
+                text: input.value,
+                // Preserve completion state if editing
+                completed: input.dataset.completed === 'true' || false 
+            }))
+            .filter(st => st.text.trim() !== '');
+        }
 
         if (taskId) {
             await tasksCollection.doc(taskId).update(taskData);
@@ -1018,13 +1028,26 @@ export class UI {
             document.getElementById('task-url').value = taskToEdit.url || '';
             document.getElementById('task-skills').value = (taskToEdit.skills || []).join(', ');
         }
-        
+        const subtaskList = document.getElementById('subtasks-list');
+
+
         document.getElementById('cancel-task-btn').onclick = closeModal;
         
         const taskTypeSelect = document.getElementById('task-type');
         const subtasksContainer = document.getElementById('project-subtasks-container');
         taskTypeSelect.onchange = () => { subtasksContainer.classList.toggle('hidden', taskTypeSelect.value !== 'project'); };
         
+        if (isEditing && taskToEdit.type === 'project' && taskToEdit.subtasks) {
+            taskToEdit.subtasks.forEach(subtask => {
+                const subtaskEl = this._createSubtaskInput(subtask.text, subtask.completed);
+                subtaskList.appendChild(subtaskEl);
+            });
+        }
+        // Also, make sure the container is visible if it's a project
+        if (taskToEdit?.type === 'project') {
+            subtasksContainer.classList.remove('hidden');
+        }
+
         document.getElementById('add-subtask-btn').onclick = () => {
             const subtaskList = document.getElementById('subtasks-list');
             const newSubtask = document.createElement('div');
@@ -1330,5 +1353,19 @@ export class UI {
         }
         
         return insights.map(insight => `<li>${insight}</li>`).join('');
+    }
+    _createSubtaskInput(text = '', completed = false) {
+        const newSubtask = document.createElement('div');
+        newSubtask.className = 'flex items-center space-x-2';
+        newSubtask.innerHTML = `
+            <input type="text" 
+                class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" 
+                placeholder="Sub-task description" 
+                value="${text}"
+                data-completed="${completed}">
+            <button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>
+        `;
+        newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
+        return newSubtask;
     }
 }
