@@ -6,277 +6,132 @@ export class AchievementSystem {
         this.tasksCollection = tasksCollection;
         this.streakTracker = streakTracker;
         this.mainContent = mainContent;
-        
-        // Static achievements (not tied to specific focus areas)
-        this.staticAchievements = {
-            'first_week': { 
-                id: 'first_week', 
-                name: 'Week Warrior', 
-                description: 'Complete a 7-day streak', 
-                icon: '🔥', 
-                category: 'streak', 
-                requirement: { type: 'streak', value: 7 }, 
-                points: 50, 
-                rarity: 'common' 
-            },
-            'consistency_king': { 
-                id: 'consistency_king', 
-                name: 'Consistency King', 
-                description: 'Maintain a 30-day streak', 
-                icon: '👑', 
-                category: 'streak', 
-                requirement: { type: 'streak', value: 30 }, 
-                points: 200, 
-                rarity: 'rare' 
-            },
-            'unstoppable': { 
-                id: 'unstoppable', 
-                name: 'Unstoppable Force', 
-                description: 'Achieve a 100-day streak', 
-                icon: '💫', 
-                category: 'streak', 
-                requirement: { type: 'streak', value: 100 }, 
-                points: 500, 
-                rarity: 'legendary' 
-            },
-            'first_task': { 
-                id: 'first_task', 
-                name: 'Getting Started', 
-                description: 'Complete your first task', 
-                icon: '🎯', 
-                category: 'tasks', 
-                requirement: { type: 'tasks_completed', value: 1 }, 
-                points: 10, 
-                rarity: 'common' 
-            },
-            'task_master': { 
-                id: 'task_master', 
-                name: 'Task Master', 
-                description: 'Complete 50 tasks', 
-                icon: '⚡', 
-                category: 'tasks', 
-                requirement: { type: 'tasks_completed', value: 50 }, 
-                points: 100, 
-                rarity: 'uncommon' 
-            },
-            'centurion': { 
-                id: 'centurion', 
-                name: 'Centurion', 
-                description: 'Complete 100 tasks', 
-                icon: '💯', 
-                category: 'tasks', 
-                requirement: { type: 'tasks_completed', value: 100 }, 
-                points: 250, 
-                rarity: 'rare' 
-            },
-            'task_legend': { 
-                id: 'task_legend', 
-                name: 'Task Legend', 
-                description: 'Complete 500 tasks', 
-                icon: '🏆', 
-                category: 'tasks', 
-                requirement: { type: 'tasks_completed', value: 500 }, 
-                points: 1000, 
-                rarity: 'legendary' 
-            },
-            'early_bird': { 
-                id: 'early_bird', 
-                name: 'Early Bird', 
-                description: 'Complete a task before 7 AM', 
-                icon: '🌅', 
-                category: 'special', 
-                requirement: { type: 'time_based', condition: 'early_morning' }, 
-                points: 30, 
-                rarity: 'uncommon' 
-            },
-            'night_owl': { 
-                id: 'night_owl', 
-                name: 'Night Owl', 
-                description: 'Complete a task after 11 PM', 
-                icon: '🦉', 
-                category: 'special', 
-                requirement: { type: 'time_based', condition: 'late_night' }, 
-                points: 30, 
-                rarity: 'uncommon' 
-            },
-            'weekend_warrior': { 
-                id: 'weekend_warrior', 
-                name: 'Weekend Warrior', 
-                description: 'Complete 10 tasks on weekends', 
-                icon: '🏖️', 
-                category: 'special', 
-                requirement: { type: 'weekend_tasks', value: 10 }, 
-                points: 50, 
-                rarity: 'uncommon' 
-            },
-            'perfect_week': { 
-                id: 'perfect_week', 
-                name: 'Perfect Week', 
-                description: 'Complete tasks every day for a week', 
-                icon: '✨', 
-                category: 'special', 
-                requirement: { type: 'streak', value: 7 }, 
-                points: 75, 
-                rarity: 'uncommon' 
-            },
-        };
 
-        this.achievements = {}; // Will contain static + dynamic achievements
+        this.staticAchievements = this.getStaticAchievements();
+        this.dynamicAchievements = {};
+        this.achievements = {};
         this.userAchievements = [];
         this.userFocusAreas = [];
+
         this.achievementSound = new Audio('assets/achievement.mp3');
         this.achievementSound.volume = 0.5;
-        
-        this.initialize();
+
+        this.initialize(); // auto async init
     }
 
     async initialize() {
-        await this.loadUserFocusAreas();
-        this.generateDynamicAchievements();
-        this.achievements = { ...this.staticAchievements, ...this.dynamicAchievements };
-        await this.loadUserAchievements();
+        try {
+            await this.loadUserFocusAreas();
+            this.generateDynamicAchievements();
+            this.achievements = { ...this.staticAchievements, ...this.dynamicAchievements };
+            await this.loadUserAchievements();
+        } catch (error) {
+            console.error('Error initializing AchievementSystem:', error);
+        }
     }
 
+    // 🧩 Normalize and load user's focus areas
     async loadUserFocusAreas() {
         try {
             const userDoc = await this.db.collection('users').doc(this.uid).get();
-            const userData = userDoc.data();
-            this.userFocusAreas = userData?.focusAreas || [];
+            const raw = userDoc.exists ? (userDoc.data()?.focusAreas || []) : [];
+
+            // normalize all possible formats → [{ id, name, icon }]
+            this.userFocusAreas = Array.isArray(raw)
+                ? raw.map((area, i) => {
+                    if (typeof area === 'string') {
+                        const clean = area.trim();
+                        return { id: clean.toLowerCase().replace(/\s+/g, '_'), name: clean };
+                    }
+                    if (area && typeof area === 'object') {
+                        const name = area.name || `Focus ${i + 1}`;
+                        const id = (area.id || name).toLowerCase().replace(/\s+/g, '_');
+                        return { id, name, icon: area.icon || null };
+                    }
+                    return null;
+                }).filter(Boolean)
+                : [];
         } catch (error) {
             console.error('Error loading user focus areas:', error);
             this.userFocusAreas = [];
         }
     }
 
+    // 🎯 Define static/global achievements
+    getStaticAchievements() {
+        return {
+            'first_week': { id: 'first_week', name: 'Week Warrior', description: 'Complete a 7-day streak', icon: '🔥', category: 'streak', requirement: { type: 'streak', value: 7 }, points: 50, rarity: 'common' },
+            'consistency_king': { id: 'consistency_king', name: 'Consistency King', description: 'Maintain a 30-day streak', icon: '👑', category: 'streak', requirement: { type: 'streak', value: 30 }, points: 200, rarity: 'rare' },
+            'unstoppable': { id: 'unstoppable', name: 'Unstoppable Force', description: 'Achieve a 100-day streak', icon: '💫', category: 'streak', requirement: { type: 'streak', value: 100 }, points: 500, rarity: 'legendary' },
+            'first_task': { id: 'first_task', name: 'Getting Started', description: 'Complete your first task', icon: '🎯', category: 'tasks', requirement: { type: 'tasks_completed', value: 1 }, points: 10, rarity: 'common' },
+            'task_master': { id: 'task_master', name: 'Task Master', description: 'Complete 50 tasks', icon: '⚡', category: 'tasks', requirement: { type: 'tasks_completed', value: 50 }, points: 100, rarity: 'uncommon' },
+            'centurion': { id: 'centurion', name: 'Centurion', description: 'Complete 100 tasks', icon: '💯', category: 'tasks', requirement: { type: 'tasks_completed', value: 100 }, points: 250, rarity: 'rare' },
+            'task_legend': { id: 'task_legend', name: 'Task Legend', description: 'Complete 500 tasks', icon: '🏆', category: 'tasks', requirement: { type: 'tasks_completed', value: 500 }, points: 1000, rarity: 'legendary' },
+            'early_bird': { id: 'early_bird', name: 'Early Bird', description: 'Complete a task before 7 AM', icon: '🌅', category: 'special', requirement: { type: 'time_based', condition: 'early_morning' }, points: 30, rarity: 'uncommon' },
+            'night_owl': { id: 'night_owl', name: 'Night Owl', description: 'Complete a task after 11 PM', icon: '🦉', category: 'special', requirement: { type: 'time_based', condition: 'late_night' }, points: 30, rarity: 'uncommon' },
+            'weekend_warrior': { id: 'weekend_warrior', name: 'Weekend Warrior', description: 'Complete 10 tasks on weekends', icon: '🏖️', category: 'special', requirement: { type: 'weekend_tasks', value: 10 }, points: 50, rarity: 'uncommon' },
+        };
+    }
+
+    // 💡 Generate dynamic focus area-based achievements
     generateDynamicAchievements() {
         this.dynamicAchievements = {};
-        
-        // Icon options for different focus areas (fallback to default if not matched)
+
         const iconMap = {
-            'development': '💻',
-            'coding': '⌨️',
-            'design': '🎨',
-            'business': '💼',
-            'fitness': '💪',
-            'health': '🏥',
-            'learning': '📚',
-            'language': '🗣️',
-            'music': '🎵',
-            'writing': '✍️',
-            'reading': '📖',
-            'ai': '🤖',
-            'ml': '🧠',
-            'data': '📊',
+            development: '💻', coding: '⌨️', design: '🎨', business: '💼',
+            fitness: '💪', health: '🏥', learning: '📚', language: '🗣️',
+            music: '🎵', writing: '✍️', reading: '📖', ai: '🤖', ml: '🧠', data: '📊'
         };
 
-        const getIconForFocusArea = (areaName) => {
-            const lowerName = areaName.toLowerCase();
+        const getIcon = (name) => {
+            const lower = name.toLowerCase();
             for (const [key, icon] of Object.entries(iconMap)) {
-                if (lowerName.includes(key)) return icon;
+                if (lower.includes(key)) return icon;
             }
-            return '🎯'; // Default icon
+            return '🎯';
         };
 
-        this.userFocusAreas.forEach((focusArea, index) => {
-            const focusAreaId = focusArea.id || focusArea.name?.toLowerCase().replace(/\s+/g, '_');
-            const focusAreaName = focusArea.name || focusArea;
-            const icon = focusArea.icon || getIconForFocusArea(focusAreaName);
+        this.userFocusAreas.forEach((area) => {
+            const { id, name, icon } = area;
+            const emoji = icon || getIcon(name);
 
-            // Beginner achievement - 10 tasks
-            this.dynamicAchievements[`${focusAreaId}_beginner`] = {
-                id: `${focusAreaId}_beginner`,
-                name: `${focusAreaName} Beginner`,
-                description: `Complete 10 tasks in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_tasks', 
-                    category: focusAreaId, 
-                    value: 10 
-                },
-                points: 50,
-                rarity: 'common'
-            };
+            const taskLevels = [
+                { suffix: 'beginner', label: 'Beginner', value: 10, points: 50, rarity: 'common' },
+                { suffix: 'enthusiast', label: 'Enthusiast', value: 25, points: 100, rarity: 'uncommon' },
+                { suffix: 'expert', label: 'Expert', value: 50, points: 200, rarity: 'rare' },
+            ];
 
-            // Enthusiast achievement - 25 tasks
-            this.dynamicAchievements[`${focusAreaId}_enthusiast`] = {
-                id: `${focusAreaId}_enthusiast`,
-                name: `${focusAreaName} Enthusiast`,
-                description: `Complete 25 tasks in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_tasks', 
-                    category: focusAreaId, 
-                    value: 25 
-                },
-                points: 100,
-                rarity: 'uncommon'
-            };
+            const hourLevels = [
+                { suffix: 'dedicated', label: 'Dedicated', value: 25, points: 150, rarity: 'uncommon' },
+                { suffix: 'master', label: 'Master', value: 50, points: 300, rarity: 'rare' },
+                { suffix: 'legend', label: 'Legend', value: 100, points: 500, rarity: 'legendary' },
+            ];
 
-            // Expert achievement - 50 tasks
-            this.dynamicAchievements[`${focusAreaId}_expert`] = {
-                id: `${focusAreaId}_expert`,
-                name: `${focusAreaName} Expert`,
-                description: `Complete 50 tasks in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_tasks', 
-                    category: focusAreaId, 
-                    value: 50 
-                },
-                points: 200,
-                rarity: 'rare'
-            };
+            taskLevels.forEach(lvl => {
+                this.dynamicAchievements[`${id}_${lvl.suffix}`] = {
+                    id: `${id}_${lvl.suffix}`,
+                    name: `${name} ${lvl.label}`,
+                    description: `Complete ${lvl.value} tasks in ${name}`,
+                    icon: emoji,
+                    category: 'category',
+                    requirement: { type: 'category_tasks', category: id, value: lvl.value },
+                    points: lvl.points,
+                    rarity: lvl.rarity
+                };
+            });
 
-            // Hours achievement - 25 hours
-            this.dynamicAchievements[`${focusAreaId}_dedicated`] = {
-                id: `${focusAreaId}_dedicated`,
-                name: `${focusAreaName} Dedicated`,
-                description: `Log 25 hours in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_hours', 
-                    category: focusAreaId, 
-                    value: 25 
-                },
-                points: 150,
-                rarity: 'uncommon'
-            };
-
-            // Hours achievement - 50 hours
-            this.dynamicAchievements[`${focusAreaId}_master`] = {
-                id: `${focusAreaId}_master`,
-                name: `${focusAreaName} Master`,
-                description: `Log 50 hours in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_hours', 
-                    category: focusAreaId, 
-                    value: 50 
-                },
-                points: 300,
-                rarity: 'rare'
-            };
-
-            // Hours achievement - 100 hours
-            this.dynamicAchievements[`${focusAreaId}_legend`] = {
-                id: `${focusAreaId}_legend`,
-                name: `${focusAreaName} Legend`,
-                description: `Log 100 hours in ${focusAreaName}`,
-                icon: icon,
-                category: 'category',
-                requirement: { 
-                    type: 'category_hours', 
-                    category: focusAreaId, 
-                    value: 100 
-                },
-                points: 500,
-                rarity: 'legendary'
-            };
+            hourLevels.forEach(lvl => {
+                this.dynamicAchievements[`${id}_${lvl.suffix}`] = {
+                    id: `${id}_${lvl.suffix}`,
+                    name: `${name} ${lvl.label}`,
+                    description: `Log ${lvl.value} hours in ${name}`,
+                    icon: emoji,
+                    category: 'category',
+                    requirement: { type: 'category_hours', category: id, value: lvl.value },
+                    points: lvl.points,
+                    rarity: lvl.rarity
+                };
+            });
         });
     }
 
@@ -305,69 +160,46 @@ export class AchievementSystem {
         return newAchievements;
     }
 
-    async checkRequirement(achievement, trigger, data) {
+    checkRequirement(achievement, trigger, data) {
         const req = achievement.requirement;
-        
+        const stats = data.stats || {}; // Get the stats object you just passed in!
+
+        // Get the time of the task that was just completed
+        const taskTime = data.taskTime || new Date(); 
+
         switch (req.type) {
             case 'streak':
-                return trigger === 'streak_update' && data.streak >= req.value;
+                // Check the streak from the stats object
+                return trigger === 'streak_update' && stats.streak >= req.value;
             
             case 'tasks_completed': {
-                if (trigger !== 'task_complete') return false;
-                const snapshot = await this.tasksCollection.where('completed', '==', true).get();
-                return snapshot.size >= req.value;
+                // No query! Just check the counter.
+                return trigger === 'task_complete' && stats.tasksCompleted >= req.value;
             }
             
             case 'time_based': {
                 if (trigger !== 'task_complete') return false;
-                const hour = new Date().getHours();
+                const hour = taskTime.getHours(); // Use the time from the data object
                 if (req.condition === 'early_morning') return hour < 7;
                 if (req.condition === 'late_night') return hour >= 23;
                 return false;
             }
             
             case 'weekend_tasks': {
-                if (trigger !== 'task_complete') return false;
-                const snapshot = await this.tasksCollection
-                    .where('completed', '==', true)
-                    .get();
-                
-                let weekendCount = 0;
-                snapshot.forEach(doc => {
-                    const taskData = doc.data();
-                    if (taskData.completedAt) {
-                        const completedDate = taskData.completedAt.toDate();
-                        const day = completedDate.getDay();
-                        if (day === 0 || day === 6) weekendCount++; // Sunday = 0, Saturday = 6
-                    }
-                });
-                return weekendCount >= req.value;
+                // No query! Just check the counter.
+                return trigger === 'task_complete' && stats.weekendTasks >= req.value;
             }
             
             case 'category_tasks': {
-                if (trigger !== 'task_complete') return false;
-                const snapshot = await this.tasksCollection
-                    .where('completed', '==', true)
-                    .where('category', '==', req.category)
-                    .get();
-                return snapshot.size >= req.value;
+                // No query! Just check the counter for that specific category.
+                const categoryCount = stats.tasksByCategory?.[req.category] || 0;
+                return trigger === 'task_complete' && categoryCount >= req.value;
             }
             
             case 'category_hours': {
-                if (trigger !== 'task_complete') return false;
-                const snapshot = await this.tasksCollection
-                    .where('completed', '==', true)
-                    .where('category', '==', req.category)
-                    .get();
-                
-                let totalHours = 0;
-                snapshot.forEach(doc => {
-                    const taskData = doc.data();
-                    if (taskData.timeSpent) {
-                        totalHours += taskData.timeSpent / 60; // Convert minutes to hours
-                    }
-                });
-                return totalHours >= req.value;
+                // No query!
+                const categoryHours = stats.hoursByCategory?.[req.category] || 0;
+                return trigger === 'task_complete' && categoryHours >= req.value;
             }
             
             default:
