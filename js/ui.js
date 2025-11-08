@@ -239,10 +239,9 @@ export class UI {
 
         if (tasksToRender.length === 0) {
             let stateKey = this.appState.activeFilter;
-            if (this.appState.tasks.length === 0 && this.appState.activeFilter === 'active') {
+            if (this.appState.tasks.length === 0) {
                 stateKey = 'default';
             }
-            if (this.appState.tasks.length === 0) stateKey = 'default';
             this.mainContent.innerHTML = this.renderEmptyState(stateKey);
             if (stateKey === 'active') triggerConfettiAnimation();
             this.updateAlertBanner();
