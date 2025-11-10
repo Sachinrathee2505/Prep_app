@@ -123,6 +123,8 @@ export class UI {
     }
 
     initializeMobileMenu= () =>{
+        if (this.mobileMenuBound) return;
+        this.mobileMenuBound = true;
         const mobileMenuClose = document.getElementById('mobile-menu-close');
         const mobileMenu = document.getElementById('mobile-menu');
         const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
@@ -239,9 +241,10 @@ export class UI {
 
         if (tasksToRender.length === 0) {
             let stateKey = this.appState.activeFilter;
-            if (this.appState.tasks.length === 0) {
+            if (this.appState.tasks.length === 0 && this.appState.activeFilter === 'active') {
                 stateKey = 'default';
             }
+            if (this.appState.tasks.length === 0) stateKey = 'default';
             this.mainContent.innerHTML = this.renderEmptyState(stateKey);
             if (stateKey === 'active') triggerConfettiAnimation();
             this.updateAlertBanner();
@@ -304,7 +307,7 @@ export class UI {
         card.innerHTML = `
             <div class="card-transform-layer"></div>
     
-            <div class="card-content relative z-10 ${{ High: 'border-red-500', Medium: 'border-yellow-500', Low: 'border-green-500' }[task.priority]} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
+            <div class="card-content relative z-10 ${task.priority === 'High' ? 'border-red-500' : task.priority === 'Medium' ? 'border-yellow-500' : 'border-green-500'} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
     
                 <div class="text-xs text-gray-400 mb-1 flex items-center gap-1">
                     <span>${categoryIcon}</span> ${categoryName}
@@ -390,12 +393,13 @@ export class UI {
                 if (!timerDisplay) return;
     
                 this.appState.timers[task.id] = setInterval(() => {
-                    if (!task.lastStartTime?.toDate) {
-                         // This can happen if the data is still syncing
-                        return;
-                    }
+                    let startTime;
+                    if (task.lastStartTime?.toDate) startTime = task.lastStartTime.toDate();
+                    else startTime = new Date(task.lastStartTime);
+
+                    if (!startTime || isNaN(startTime.getTime())) return;
     
-                    const elapsed = Math.round((new Date() - task.lastStartTime.toDate()) / 1000);
+                    const elapsed = Math.round((new Date() - startTime) / 1000);
                     const totalTime = (task.totalTimeLogged || 0) + elapsed;
                     
                     const h = Math.floor(totalTime / 3600);
@@ -410,6 +414,8 @@ export class UI {
     }
 
     add3DTiltEffect() {
+        if (this.tiltBound) return;
+        this.tiltBound = true;
         if (!this.mainContent) return;
         let lastTransformLayer = null;
     
@@ -538,8 +544,13 @@ export class UI {
           grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
           return;
         }
-        Object.values(this.appState.skills).sort((a,b) => (a.totalConfidence / a.count) - (b.totalConfidence / b.count)).forEach(skill => {
-          const average = skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
+        const getSkillAvg = (skill) => {
+            return skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
+        };
+        Object.values(this.appState.skills)
+            .sort((a, b) => getSkillAvg(a) - getSkillAvg(b)) // Sort by the safe average
+            .forEach(skill => {
+          const average = getSkillAvg(skill);
           const skillCard = document.createElement('div');
           skillCard.className = 'bg-gray-700 p-4 rounded-lg flex flex-col justify-between';
           skillCard.innerHTML = `<div><h3 class="font-bold text-lg">${skill.name}</h3><p class="text-sm text-gray-400">Rated ${skill.count} time(s)</p></div><div class="mt-4"><p class="text-sm text-gray-300">Confidence: ${average.toFixed(1)} / 5.0</p><div class="w-full bg-gray-600 rounded-full h-2.5 mt-1"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${average / 5 * 100}%"></div></div></div>`;
@@ -853,7 +864,7 @@ export class UI {
                         tooltip.style.display = 'block';
                         const rect = cell.getBoundingClientRect();
                         tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
-                        tooltip.style.top = `${rect.top - 10}px`;
+                        tooltip.style.top = `${rect.top + window.scrollY - 10}px`;
                     });
                     
                     cell.addEventListener('mouseleave', () => {
