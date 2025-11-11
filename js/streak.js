@@ -12,97 +12,125 @@ export class StreakTracker {
             90: '👑 Quarterly King'
         };
     }
-
-    normalizeDate(date) {
-        if (!date) return null;
-        const d = date.toDate ? date.toDate() : new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d;
+    normalizeToUtcDay(dateLike) {
+        if (!dateLike) return null;
+        const d = dateLike.toDate ? dateLike.toDate() : new Date(dateLike);
+        const ms = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+        const msPerDay = 24 * 60 * 60 * 1000;
+        return Math.floor(ms / msPerDay);
     }
 
-    isSameDay(date1, date2) {
-        if (!date1 || !date2) return false;
-        const d1 = this.normalizeDate(date1);
-        const d2 = this.normalizeDate(date2);
-        return d1.getTime() === d2.getTime();
-    }
-
-    isConsecutiveDay(lastDate, today) {
-        if (!lastDate || !today) return false;
-        const d1 = this.normalizeDate(lastDate);
-        const d2 = this.normalizeDate(today);
-        const diffTime = Math.abs(d2 - d1);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays === 1;
+    /**
+     * Return number of UTC days between lastDay and todayDay:
+     * - 0 => same day
+     * - 1 => consecutive (yesterday -> today)
+     * - >1 => gap
+     * - negative => lastStudy in future (clock skew)
+     */
+    daysBetweenUtc(lastDate, todayDate) {
+        const lastDay = this.normalizeToUtcDay(lastDate);
+        const todayDay = this.normalizeToUtcDay(todayDate);
+        if (lastDay === null || todayDay === null) return null;
+        return todayDay - lastDay; // signed integer
     }
 
     async updateStreak() {
         try {
-            const today = new Date();
-            const streakDoc = await this.streakRef.get();
-            const data = streakDoc.data() || { 
-                current: 0, 
-                lastStudy: null,
-                bestStreak: 0,
-                milestones: [],
-                totalDays: 0
-            };
-            if (this.isSameDay(data.lastStudy, today)) {
-                return {
-                    status: 'unchanged',
-                    streak: data.current,
-                    message: 'Already logged today'
-                };
-            }
+            // Use a local Date for display and checks; we'll store serverTimestamp() in Firestore
+            const now = new Date();
 
-            let updates = {
-                lastStudy: today,
-                totalDays: (data.totalDays || 0) + 1
-            };
-
-            if (this.isConsecutiveDay(data.lastStudy, today)) {
-                const newStreak = data.current + 1;
-                updates = {
-                    ...updates,
-                    current: newStreak,
-                    bestStreak: Math.max(newStreak, data.bestStreak || 0)
+            // transaction to avoid race conditions
+            const result = await db.runTransaction(async (tx) => {
+                const doc = await tx.get(this.streakRef);
+                const data = doc.exists ? doc.data() : {
+                    current: 0,
+                    bestStreak: 0,
+                    totalDays: 0,
+                    milestones: []
                 };
 
-                // Check for new milestone
-                const milestone = this.checkMilestone(newStreak);
-                if (milestone) {
-                    updates.milestones = firebase.firestore.FieldValue.arrayUnion({
-                        days: newStreak,
-                        achieved: today,
-                        title: milestone
-                    });
+                const dayDiff = this.daysBetweenUtc(data.lastStudy, now);
+
+                // If lastStudy exists and is same UTC day -> nothing to do
+                if (dayDiff === 0) {
+                    // No change
+                    return {
+                        status: 'unchanged',
+                        streak: data.current || 0,
+                        message: 'Already logged today'
+                    };
                 }
 
-                await this.streakRef.set(updates, { merge: true });
-                await this.celebrateStreak(newStreak);
-
-                return {
-                    status: 'extended',
-                    streak: newStreak,
-                    milestone,
-                    message: `Streak extended to ${newStreak} days!`
+                // Prepare common updates: use serverTimestamp for lastStudy, increment totalDays
+                const updates = {
+                    lastStudy: firebase.firestore.FieldValue.serverTimestamp(),
+                    // We'll increment totalDays atomically:
                 };
-            } 
-            else {
+
+                // If dayDiff === 1 => consecutive
+                if (dayDiff === 1) {
+                    const newStreak = (data.current || 0) + 1;
+                    updates.current = newStreak;
+                    updates.bestStreak = Math.max(newStreak, data.bestStreak || 0);
+
+                    // increment totalDays
+                    updates.totalDays = firebase.firestore.FieldValue.increment(1);
+
+                    // handle milestone (arrayUnion with server timestamp inside object)
+                    const milestoneTitle = this.checkMilestone(newStreak);
+                    if (milestoneTitle) {
+                        updates.milestones = firebase.firestore.FieldValue.arrayUnion({
+                            days: newStreak,
+                            achieved: firebase.firestore.FieldValue.serverTimestamp(),
+                            title: milestoneTitle
+                        });
+                    }
+
+                    // Use tx.set with merge to atomically apply updates
+                    tx.set(this.streakRef, updates, { merge: true });
+
+                    return {
+                        status: 'extended',
+                        streak: newStreak,
+                        milestone: milestoneTitle,
+                        message: `Streak extended to ${newStreak} days!`
+                    };
+                }
+
+                // If dayDiff === null or dayDiff < 0 or dayDiff > 1 => not consecutive; start new streak = 1
+                if (dayDiff === null) {
+                    // No lastStudy -> first log
+                } else if (dayDiff < 0) {
+                    // lastStudy is in future (clock skew). We choose to reset but record a warning
+                    console.warn('StreakTracker: lastStudy is in the future compared to client time. Resetting streak.');
+                }
+                // reset to 1
                 updates.current = 1;
-                await this.streakRef.set(updates, { merge: true });
+                updates.bestStreak = Math.max(data.bestStreak || 0, 1);
+                updates.totalDays = firebase.firestore.FieldValue.increment(1);
+
+                tx.set(this.streakRef, updates, { merge: true });
+
                 return {
                     status: 'reset',
                     streak: 1,
                     message: 'New streak started!'
                 };
+            });
+
+            // Celebrate outside transaction (transaction already committed)
+            if (result.status === 'extended') {
+                // result.streak exists
+                await this.celebrateStreak(result.streak);
             }
-        } 
-        catch (error) {
-            console.error('Error updating streak:', error);
+
+            return result;
+        } catch (err) {
+            console.error('Error updating streak (transaction):', err);
             throw new Error('Failed to update streak');
         }
     }
+
 
     checkMilestone(days) {
         return this.MILESTONE_TIERS[days] || null;
