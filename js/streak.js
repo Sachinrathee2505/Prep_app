@@ -11,6 +11,7 @@ export class StreakTracker {
             60: '💫 Dedication Diamond',
             90: '👑 Quarterly King'
         };
+        if (!userId) throw new Error('StreakTracker requires a userId');
     }
     normalizeToUtcDay(dateLike) {
         if (!dateLike) return null;
@@ -188,4 +189,5 @@ export class StreakTracker {
             lastStudy: data.lastStudy
         };
     }
+
 }
