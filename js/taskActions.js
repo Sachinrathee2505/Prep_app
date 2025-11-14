@@ -30,12 +30,18 @@ export async function completeTask({
 
         // 1️⃣ Update the task document
         const taskRef = db.collection('users').doc(uid).collection('tasks').doc(taskId);
-        await taskRef.update({
+        const taskUpdates = {
             completed: true,
             completedAt: now,
-            ...(timeSpent && { timeSpent }),
-            ...(category && { category }),
-        });
+            totalTimeLogged: timeSpent, // Use the final calculated time
+            category: category,
+            
+            // stop any running timer
+            timerRunning: false,
+            lastStartTime: null
+        };
+        
+        await taskRef.update(taskUpdates);
 
         // 2️⃣ Update streak
         const streakTracker = new StreakTracker(uid);
