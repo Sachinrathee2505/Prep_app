@@ -643,12 +643,19 @@ export class UI {
     }
      
     _createCategoryMapping(focusAreas) {
-        return {
-            'fullstack': 'focus_1',
-            'mitx': 'focus_2',
-            'nvidia': 'focus_3'
-        };
+        const mapping = {};
+
+        focusAreas.forEach(area => {
+            // Map the display name (case-insensitive)
+            mapping[area.name.toLowerCase()] = area.id;
+
+            // Also map the ID itself for safety
+            mapping[area.id.toLowerCase()] = area.id;
+        });
+
+        return mapping;
     }
+
      
     async _createChart(timeData, userProfile) {
         const canvas = document.getElementById('timeAllocationChart');
