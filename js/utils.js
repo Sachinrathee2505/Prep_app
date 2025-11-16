@@ -127,6 +127,16 @@ function getCategoryName(categoryId, appState) {
     const category = userProfile.focusAreas.find(area => area.id === categoryId);
     return category ? category.name : categoryId;
 }
+function showLoadingOverlay() {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) overlay.style.display = "flex";
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) overlay.style.display = "none";
+}
+
 export {
     showToast,
     showUndoToast,
@@ -139,5 +149,7 @@ export {
     formatTime,
     triggerConfettiAnimation,
     getCompletionRate,
-    getCategoryName
+    getCategoryName,
+    showLoadingOverlay,
+    hideLoadingOverlay
 };

@@ -7,7 +7,9 @@ import {
     formatTime,
     triggerConfettiAnimation,
     getCompletionRate,
-    getCategoryName
+    getCategoryName,
+    showLoadingOverlay,
+    hideLoadingOverlay
 } from './utils.js';
 import { db } from './firebase.js';
 
@@ -928,6 +930,7 @@ export class UI {
 
     async _handleFormSubmit(e, tasksCollection, taskId=null) {
         e.preventDefault();
+        showLoadingOverlay();
         const formData = new FormData(e.target);
         const taskData = {
           type: formData.get('type'),
@@ -963,7 +966,8 @@ export class UI {
             await tasksCollection.add(taskData);
             closeModal();
             showToast('Task added successfully!');
-        } 
+        }
+        setTimeout(() => hideLoadingOverlay(), 300);
     }
 
     showTaskModal(tasksCollection, taskToEdit = null) {

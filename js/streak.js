@@ -77,12 +77,12 @@ export class StreakTracker {
                     // increment totalDays
                     updates.totalDays = firebase.firestore.FieldValue.increment(1);
 
-                    // handle milestone (arrayUnion with server timestamp inside object)
+                    // handle milestone
                     const milestoneTitle = this.checkMilestone(newStreak);
                     if (milestoneTitle) {
                         updates.milestones = firebase.firestore.FieldValue.arrayUnion({
                             days: newStreak,
-                            achieved: firebase.firestore.FieldValue.serverTimestamp(),
+                            achieved: firebase.firestore.Timestamp.fromDate(new Date()),
                             title: milestoneTitle
                         });
                     }
@@ -189,5 +189,4 @@ export class StreakTracker {
             lastStudy: data.lastStudy
         };
     }
-
 }
