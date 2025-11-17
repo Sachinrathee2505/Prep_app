@@ -20,6 +20,7 @@ export class AchievementSystem {
     }
 
     async initialize() {
+        if (this._initialized) return; this._initialized = true;
         try {
             await this.loadUserFocusAreas();
             this.generateDynamicAchievements();
