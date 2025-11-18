@@ -1,4 +1,5 @@
 import { showToast } from './utils.js';
+
 export class FocusMode {
   constructor({ db, uid, confetti }) {
         this.db = db;
@@ -30,7 +31,9 @@ export class FocusMode {
             this.init();
         }
     }    
-    init() { // DOM elements 
+
+    init() {
+        // DOM elements 
         this.overlay = document.getElementById('focusMode');
         this.taskName = document.getElementById('focusTaskName');
         this.timerDisplay = document.getElementById('focusTimerDisplay');
@@ -51,52 +54,71 @@ export class FocusMode {
             return;
         }
         
-        this.content = this.overlay.querySelector('.focus-content');
-        
         // Setup event listeners
         this.setupEventListeners();
+
     }
-    setupEventListeners() {    // Preset buttons
+
+    setupEventListeners() {
+        // Preset buttons
         this.presets.querySelectorAll('.preset-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const minutes = e.currentTarget.dataset.minutes;
-            if (minutes === 'custom') {
-            const custom = prompt('Enter minutes (5-180):', '45');
-            const parsed = parseInt(custom);
-            if (parsed >= 5 && parsed <= 180) this.startSession(parsed);
-            } else {
-            this.startSession(parseInt(minutes));
-            }
-        });
+            btn.addEventListener('click', (e) => {
+                const minutes = e.currentTarget.dataset.minutes;
+                if (minutes === 'custom') {
+                    const custom = prompt('Enter minutes (5-180):', '45');
+                    const parsed = parseInt(custom);
+                    if (parsed >= 5 && parsed <= 180) this.startSession(parsed);
+                } else {
+                    this.startSession(parseInt(minutes));
+                }
+            });
         });
         
         // Control buttons
         this.toggleBtn.addEventListener('click', () => this.toggleTimer());
-        this.endBtn.addEventListener('click', () => this.endSession(false)); // Don't mark task as complete
+        this.endBtn.addEventListener('click', () => this.endSession(false));
         this.closeBtn.addEventListener('click', () => this.close());
         this.skipBreakBtn.addEventListener('click', () => this.skipBreak());
         
         // Prevent accidental close
         this.overlay.addEventListener('click', (e) => {
-        if (e.target === this.overlay && this.startTime && !this.isPaused) {
-            if (confirm('Are you sure you want to end this focus session?')) {
-            this.endSession(false);
+            if (e.target === this.overlay && this.startTime && !this.isPaused) {
+                if (confirm('Are you sure you want to end this focus session?')) {
+                    this.endSession(false);
+                }
             }
-        }
         });
         
-        // Visibility change (auto-pause)
-        document.addEventListener('visibilitychange', () => {
-        if (document.hidden && this.startTime && !this.isPaused && !this.isBreak) this.pause();
-        });
     }
 
+
     open(task) {
-        // Restore session if one exists for this task
-        if (this.restoreSession(task.id)) {
-            return;
+        // ✅ Check if there's an existing session FOR THIS TASK
+        const saved = localStorage.getItem('focusSession');
+        
+        if (saved) {
+            try {
+                const sessionData = JSON.parse(saved);
+                
+                // If session is for THIS task, restore it
+                if (sessionData.taskId === task.id) {
+                    this.restoreExistingSession(sessionData, task);
+                    return;
+                }
+                
+                // If session is for DIFFERENT task, ask user
+                if (confirm('You have an active session for another task. Start a new session?')) {
+                    this.clearSession();
+                } else {
+                    return; // User cancelled
+                }
+            } catch (e) {
+                console.error('Error restoring session:', e);
+                localStorage.removeItem('focusSession');
+            }
         }
-        // Otherwise, start a new one
+        
+        // Start fresh session
         this.currentTask = task;
         this.taskName.textContent = task.title;
         this.overlay.classList.remove('hidden');
@@ -124,19 +146,22 @@ export class FocusMode {
         this.startTime = Date.now() - this.elapsed;
         this.isPaused = false;
         this.toggleBtn.textContent = 'Pause';
-        this.saveSession(); // Save state when we start/resume
+        this.status.textContent = 'Focus Session';
         
-        this.interval = setInterval(() => this.tick(), 250); // Update 4 times a second
+        this.interval = setInterval(() => this.tick(), 250);
+        this.saveSession(); // ✅ Save after starting
     }
   
     pause() {
         if (this.isPaused) return;
+        
         this.isPaused = true;
         this.elapsed = Date.now() - this.startTime;
         clearInterval(this.interval);
         this.toggleBtn.textContent = 'Resume';
         this.status.textContent = 'Paused';
-        this.saveSession(); // Save state when paused
+        
+        this.saveSession(); // ✅ Save after pausing
     }
   
     toggleTimer() {
@@ -147,60 +172,120 @@ export class FocusMode {
     tick() {
         this.elapsed = Date.now() - this.startTime;
         this.updateDisplay();
+        
         const seconds = Math.floor(this.elapsed / 1000);
-        if (seconds % 10 === 0 && (this.elapsed % 1000) < 250) { // Update once per 10s
+        if (seconds % 10 === 0 && (this.elapsed % 1000) < 250) {
             const motivationEl = document.getElementById('focusMotivation');
             if (motivationEl) {
                 const newMotivation = this.motivations[Math.floor(Math.random() * this.motivations.length)];
                 motivationEl.textContent = newMotivation;
             }
         }
+        
+        // ✅ Check if session completed
         if (this.elapsed >= this.targetMinutes * 60 * 1000) {
-        this.endSession(true); // Mark task as complete
+            this.completeSession(); // ✅ Separate method for completion
         }
     }
 
     updateDisplay() {
         const totalSeconds = this.targetMinutes * 60;
-        const elapsedSeconds = this.elapsed / 1000;
+        const elapsedSeconds = Math.floor(this.elapsed / 1000);
         const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
         
         const minutes = Math.floor(remainingSeconds / 60);
         const seconds = Math.floor(remainingSeconds % 60);
         
         this.timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        this.progressBar.style.width = `${(elapsedSeconds / totalSeconds) * 100}%`;
+        this.progressBar.style.width = `${Math.min(100, (elapsedSeconds / totalSeconds) * 100)}%`;
+    }
+
+    restoreExistingSession(sessionData, task) {
+        this.currentTask = task; // Use full task object passed in
+        this.taskName.textContent = task.title;
+        this.sessionId = sessionData.sessionId;
+        this.targetMinutes = sessionData.targetMinutes;
+        this.elapsed = sessionData.elapsed;
+        this.isPaused = true;
+        
+        // Show UI
+        this.overlay.classList.remove('hidden');
+        this.presets.style.display = 'none';
+        this.content.style.display = 'block';
+        
+        // Update display
+        this.updateDisplay();
+        this.toggleBtn.textContent = 'Resume';
+        this.status.textContent = 'Session Paused';
+        
+        showToast('📌 Previous session restored', 'info');
+    }
+    
+    // ✅ Separate completion logic
+    async completeSession() {
+        clearInterval(this.interval);
+        const timeLogged = Math.round(this.elapsed / 1000);
+
+        if (timeLogged > 60 && this.db && this.uid) { // ✅ Check if db exists
+            try {
+                const timeLogsCollection = this.db.collection('users').doc(this.uid).collection('timeLogs');
+                await timeLogsCollection.add({
+                    taskId: this.currentTask.id,
+                    duration: timeLogged,
+                    category: this.currentTask.category,
+                    timestamp: new Date()
+                });
+
+                const tasksCollection = this.db.collection('users').doc(this.uid).collection('tasks');
+                await tasksCollection.doc(this.currentTask.id).update({ completed: true });
+                
+                showToast(`🎉 Task "${this.currentTask.title}" completed!`);
+                this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+            } catch (error) {
+                console.error('Error saving to database:', error);
+                showToast('⚠️ Completed! (offline mode)', 'warning');
+            }
+        } else {
+            showToast(`🎉 Task "${this.currentTask.title}" completed! (${Math.round(timeLogged/60)}min)`);
+            this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        }
+        
+        this.clearSession();
+        this.startBreak();
     }
   
     async endSession(markComplete) {
         clearInterval(this.interval);
         const timeLogged = Math.round(this.elapsed / 1000);
 
-        if (timeLogged > 60) { // Only log if more than a minute
-        const timeLogsCollection = this.db.collection('users').doc(this.uid).collection('timeLogs');
-        await timeLogsCollection.add({
-            taskId: this.currentTask.id,
-            duration: timeLogged,
-            category: this.currentTask.category,
-            timestamp: new Date()
-        });
-
-        if (markComplete) {
-            const tasksCollection = this.db.collection('users').doc(this.uid).collection('tasks');
-            await tasksCollection.doc(this.currentTask.id).update({ completed: true });
-            showToast(`Task "${this.currentTask.title}" marked as complete!`);
-            this.confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-        }
+        if (timeLogged > 60 && this.db && this.uid) { // ✅ Check if db exists
+            try {
+                const timeLogsCollection = this.db.collection('users').doc(this.uid).collection('timeLogs');
+                await timeLogsCollection.add({
+                    taskId: this.currentTask.id,
+                    duration: timeLogged,
+                    category: this.currentTask.category,
+                    timestamp: new Date()
+                });
+                
+                showToast(`⏱️ Logged ${Math.round(timeLogged / 60)} minutes`);
+            } catch (error) {
+                console.error('Error saving to database:', error);
+                showToast(`⏱️ Session ended (${Math.round(timeLogged / 60)}min - offline)`, 'warning');
+            }
         }
         
         this.clearSession();
-        this.isBreak ? this.close() : this.startBreak();
+        this.close();
     }
 
     startBreak() {
         this.isBreak = true;
+        this.startTime = null; // ✅ Clear focus timer state
+        this.isPaused = false;
+        
         this.breakOverlay.classList.remove('hidden');
-        let breakSeconds = 5 * 60; // 5 minute break
+        let breakSeconds = 5 * 60;
         this.breakTimer.textContent = `5:00`;
         
         this.interval = setInterval(() => {
@@ -208,60 +293,66 @@ export class FocusMode {
             const minutes = Math.floor(breakSeconds / 60);
             const seconds = Math.floor(breakSeconds % 60);
             this.breakTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            if (breakSeconds <= 0) this.skipBreak();
+            
+            if (breakSeconds <= 0) {
+                this.skipBreak();
+            }
         }, 1000);
     }
 
     skipBreak() {
         clearInterval(this.interval);
         this.breakOverlay.classList.add('hidden');
-        this.close();
+        this.isBreak = false;
+        this.overlay.classList.add('hidden');
+        // ✅ Don't call close() which might trigger endSession again
     }
 
     close() {
-        if (this.startTime && !this.isPaused) this.endSession(false);
+        // ✅ Only end session if actually running (not during break)
+        if (this.startTime && !this.isPaused && !this.isBreak) {
+            if (confirm('End this focus session?')) {
+                this.endSession(false);
+                return;
+            } else {
+                return; // Don't close
+            }
+        }
+        
+        clearInterval(this.interval);
         this.overlay.classList.add('hidden');
         this.clearSession();
     }
 
+    // ✅Save current state to localStorage
     saveSession() {
-        const sessionData = {
-            taskId: this.currentTask.id,
-            taskTitle: this.currentTask.title,
-            sessionId: this.sessionId,
-            elapsed: this.elapsed,
-            targetMinutes: this.targetMinutes,
-            startTime: this.startTime
-        };
-        localStorage.setItem('focusSession', JSON.stringify(sessionData));
-    }
-
-    restoreSession(taskId) {
-        const saved = localStorage.getItem('focusSession');
-        if (!saved) return false;
+        if (!this.currentTask) return;
         
-        const sessionData = JSON.parse(saved);
-        if (sessionData.taskId !== taskId) return false;
-
-        this.currentTask = { id: sessionData.taskId, title: sessionData.taskTitle };
-        this.taskName.textContent = this.currentTask.title;
-        this.sessionId = sessionData.sessionId;
-        this.elapsed = sessionData.elapsed;
-        this.targetMinutes = sessionData.targetMinutes;
-        
-        this.overlay.classList.remove('hidden');
-        this.presets.style.display = 'none';
-        this.content.style.display = 'block';
-
-        this.pause(); // Start in a paused state
-        this.updateDisplay();
-        return true;
+        try {
+            const sessionData = {
+                taskId: this.currentTask.id,
+                taskTitle: this.currentTask.title,
+                taskCategory: this.currentTask.category,
+                sessionId: this.sessionId,
+                elapsed: this.isPaused ? this.elapsed : (Date.now() - this.startTime),
+                targetMinutes: this.targetMinutes,
+                savedAt: Date.now()
+            };
+            
+            localStorage.setItem('focusSession', JSON.stringify(sessionData));
+        } catch (error) {
+            console.error('Error saving session:', error);
+        }
     }
 
     clearSession() {
         this.startTime = null;
         this.isPaused = true;
+        this.elapsed = 0;
         this.currentTask = null;
+        this.sessionId = null;
+        this.isBreak = false;
+        clearInterval(this.interval);
         localStorage.removeItem('focusSession');
     }
 }
