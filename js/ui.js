@@ -212,6 +212,7 @@ export class UI {
     // --- Dashboard Rendering ---
 
     renderDashboard() {
+        
         if (this.appState.isLoading) {
             this.renderSkeletons();
             return;

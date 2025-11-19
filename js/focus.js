@@ -1,4 +1,5 @@
 import { showToast } from './utils.js';
+import { firebase } from './firebase.js';
 
 export class FocusMode {
   constructor({ db, uid, confetti }) {
@@ -72,6 +73,10 @@ export class FocusMode {
                     this.startSession(parseInt(minutes));
                 }
             });
+        });
+        // Force save before refresh/close
+        window.addEventListener('beforeunload', () => {
+            this.saveSession();
         });
         
         // Control buttons
@@ -171,9 +176,13 @@ export class FocusMode {
   
     tick() {
         this.elapsed = Date.now() - this.startTime;
-        this.updateDisplay();
-        
         const seconds = Math.floor(this.elapsed / 1000);
+        this.updateDisplay();
+        // Auto-save every 5 seconds as a backup
+        if (seconds % 5 === 0) {
+            this.saveSession();
+        }
+        
         if (seconds % 10 === 0 && (this.elapsed % 1000) < 250) {
             const motivationEl = document.getElementById('focusMotivation');
             if (motivationEl) {
@@ -181,7 +190,7 @@ export class FocusMode {
                 motivationEl.textContent = newMotivation;
             }
         }
-        
+
         // ✅ Check if session completed
         if (this.elapsed >= this.targetMinutes * 60 * 1000) {
             this.completeSession(); // ✅ Separate method for completion
@@ -237,7 +246,20 @@ export class FocusMode {
                 });
 
                 const tasksCollection = this.db.collection('users').doc(this.uid).collection('tasks');
-                await tasksCollection.doc(this.currentTask.id).update({ completed: true });
+                await tasksCollection.doc(this.currentTask.id).update({ 
+                completed: true,
+                totalTimeLogged: firebase.firestore.FieldValue.increment(timeLogged)
+            });
+            // ✅ Update local task object
+            if (!this.currentTask.totalTimeLogged) {
+                this.currentTask.totalTimeLogged = 0;
+            }
+            this.currentTask.totalTimeLogged += timeLogged;
+
+            // ✅ Emit event to trigger UI update
+            document.dispatchEvent(new CustomEvent('taskUpdated', {
+                detail: { taskId: this.currentTask.id }
+            }));
                 
                 showToast(`🎉 Task "${this.currentTask.title}" completed!`);
                 this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
@@ -268,7 +290,30 @@ export class FocusMode {
                     timestamp: new Date()
                 });
                 
-                showToast(`⏱️ Logged ${Math.round(timeLogged / 60)} minutes`);
+            const tasksCollection = this.db.collection('users').doc(this.uid).collection('tasks');
+            
+            // Prepare updates
+            const updates = {
+                totalTimeLogged: firebase.firestore.FieldValue.increment(timeLogged)
+            };
+            // ✅ Update local task object
+            if (!this.currentTask.totalTimeLogged) {
+                this.currentTask.totalTimeLogged = 0;
+            }
+            this.currentTask.totalTimeLogged += timeLogged;
+
+            // ✅ Emit event to trigger UI update
+            document.dispatchEvent(new CustomEvent('taskUpdated', {
+                detail: { taskId: this.currentTask.id }
+            }));
+            // If markComplete is true (passed from button), mark it done
+            if (markComplete) {
+                updates.completed = true;
+            }
+
+            await tasksCollection.doc(this.currentTask.id).update(updates);
+
+            showToast(`⏱️ Logged ${Math.round(timeLogged / 60)} minutes`);
             } catch (error) {
                 console.error('Error saving to database:', error);
                 showToast(`⏱️ Session ended (${Math.round(timeLogged / 60)}min - offline)`, 'warning');
