@@ -338,6 +338,7 @@ async function initializeAppForUser(user, userProfile) {
     // Perform initial setup
     ui.navigate('dashboard');
     ui.add3DTiltEffect();
+
 }
 
 function attachDataListeners(tasksCollection, skillsCollection) {
@@ -354,6 +355,7 @@ function attachDataListeners(tasksCollection, skillsCollection) {
     if (appState.currentView === 'skills') ui.render();
     });
 }
+
 
 
 
@@ -530,29 +532,37 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         });   
         return;
     }
-    // ✅ TIMER BUTTON - Start/Stop
+    // ✅ TIMER BUTTON
     else if (e.target.closest('.timer-btn')) {
         try {
-            // First, check if the task is already completed.
             if (task.completed) {
                 showToast("Cannot start a timer on a completed task.");
                 return; 
             }
             const isRunning = !task.timerRunning;
             const updates = { timerRunning: isRunning };
+            
             if (isRunning) {
-                // Start timer
+                // --- START TIMER ---
+                // Remote: Use server timestamp
                 updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+                
+                // Local: Use current date for immediate UI feedback
+                task.lastStartTime = new Date();
+                
                 console.log("⏱️ Timer started for task:", task.title);
             } else if (task.lastStartTime) {
-                // Stop timer - calculate duration
+                // --- STOP TIMER ---
                 const lastStart = task.lastStartTime.toDate ? 
                     task.lastStartTime.toDate() : 
                     new Date(task.lastStartTime);            
                 const duration = Math.round((new Date() - lastStart) / 1000);
-                updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+
+                // 1. Database: Atomic Increment
+                updates.totalTimeLogged = firebase.firestore.FieldValue.increment(duration);
                 updates.lastStartTime = null;
-                // Create time log entry
+
+                // 2. Time Log
                 await timeLogsCollection.add({
                     taskId: taskId,
                     duration: duration,
@@ -560,18 +570,31 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                     timestamp: new Date(),
                     userId: auth.currentUser.uid
                 });
-                console.log(`⏹️ Timer stopped. Duration: ${duration}s. Total: ${updates.totalTimeLogged}s`);
+                
+                // 3. Local State: Manual Addition (Fixes the "Disappearing Time" bug)
+                task.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+                task.lastStartTime = null;
+                
+                console.log(`⏹️ Timer stopped. Duration: ${duration}s.`);
             }
+
+            // Update Firestore
             await tasksCollection.doc(taskId).update(updates);
-            // Update local task
-            Object.assign(task, updates);
+            
+            // ✅ CRITICAL FIX: Update local task object safely
+            // We create a copy of updates but REMOVE the Firestore Sentinel objects
+            // so they don't overwrite our correct local numbers/dates.
+            const localUpdates = { ...updates };
+            delete localUpdates.totalTimeLogged; // Don't overwrite our manual calculation
+            delete localUpdates.lastStartTime;   // Don't overwrite our local Date object
+            
+            Object.assign(task, localUpdates);
+            
             // Refresh UI
             ui.render();
         } catch (error) {
             console.error('❌ Error updating timer:', error);
-            if (typeof showToast === 'function') {
-                showToast('Failed to update timer', 'error');
-            }
+            if (typeof showToast === 'function') showToast('Failed to update timer', 'error');
         }
         return; 
     }
@@ -586,3 +609,12 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         }
     }
 }
+document.addEventListener('task-time-updated', (e) => {
+    const { taskId, addedSeconds } = e.detail;
+    const task = appState.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.totalTimeLogged = (task.totalTimeLogged || 0) + addedSeconds;
+        console.log(`🔄 Synced focus time to local state: +${addedSeconds}s`);
+        ui.render(); 
+    }
+});

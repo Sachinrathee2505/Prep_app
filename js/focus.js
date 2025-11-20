@@ -1,5 +1,5 @@
-import { showToast } from './utils.js';
-import { firebase } from './firebase.js';
+import { showToast} from './utils.js';
+import {firebase } from './firebase.js';
 
 export class FocusMode {
   constructor({ db, uid, confetti }) {
@@ -57,6 +57,23 @@ export class FocusMode {
         
         // Setup event listeners
         this.setupEventListeners();
+        const saved = localStorage.getItem('focusSession');
+        if (saved) {
+            try {
+                const sessionData = JSON.parse(saved);
+                // Reconstruct minimal task object needed for completion
+                const minimalTask = {
+                    id: sessionData.taskId,
+                    title: sessionData.taskTitle,
+                    category: sessionData.taskCategory
+                };
+                // Restore immediately so the user sees the timer running
+                this.restoreExistingSession(sessionData, minimalTask);
+            } catch (e) {
+                console.error('Error auto-restoring session:', e);
+                localStorage.removeItem('focusSession');
+            }
+        }
 
     }
 
@@ -234,6 +251,7 @@ export class FocusMode {
     async completeSession() {
         clearInterval(this.interval);
         const timeLogged = Math.round(this.elapsed / 1000);
+        this.updateDashboardUI(timeLogged);
 
         if (timeLogged > 60 && this.db && this.uid) { // ✅ Check if db exists
             try {
@@ -255,6 +273,7 @@ export class FocusMode {
                 this.currentTask.totalTimeLogged = 0;
             }
             this.currentTask.totalTimeLogged += timeLogged;
+            
 
             // ✅ Emit event to trigger UI update
             document.dispatchEvent(new CustomEvent('taskUpdated', {
@@ -279,6 +298,7 @@ export class FocusMode {
     async endSession(markComplete) {
         clearInterval(this.interval);
         const timeLogged = Math.round(this.elapsed / 1000);
+        this.updateDashboardUI(timeLogged);
 
         if (timeLogged > 60 && this.db && this.uid) { // ✅ Check if db exists
             try {
@@ -310,6 +330,7 @@ export class FocusMode {
             if (markComplete) {
                 updates.completed = true;
             }
+            
 
             await tasksCollection.doc(this.currentTask.id).update(updates);
 
@@ -399,5 +420,39 @@ export class FocusMode {
         this.isBreak = false;
         clearInterval(this.interval);
         localStorage.removeItem('focusSession');
+    }
+
+    updateDashboardUI(addedSeconds) {
+        if (!this.currentTask) return;
+
+        // 1. Update the DOM (Visuals)
+        const card = document.querySelector(`.task-card[data-id="${this.currentTask.id}"]`);
+        if (card) {
+            const timerDisplay = card.querySelector('.timer-display');
+            if (timerDisplay) {
+                // Parse current time from text to ensure accuracy
+                const currentText = timerDisplay.textContent.trim();
+                const parts = currentText.split(':').map(Number);
+                let currentTotalSeconds = 0;
+                if (parts.length === 3) currentTotalSeconds = (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+                else if (parts.length === 2) currentTotalSeconds = (parts[0] * 60) + parts[1];
+
+                const newTotal = currentTotalSeconds + addedSeconds;
+                
+                // Format and display
+                const h = Math.floor(newTotal / 3600);
+                const m = Math.floor((newTotal % 3600) / 60);
+                const s = newTotal % 60;
+                timerDisplay.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+        }
+
+        // 2. ✅ ADD THIS: Tell script.js to update the memory immediately
+        document.dispatchEvent(new CustomEvent('task-time-updated', {
+            detail: {
+                taskId: this.currentTask.id,
+                addedSeconds: addedSeconds
+            }
+        }));
     }
 }
