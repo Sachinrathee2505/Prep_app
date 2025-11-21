@@ -273,12 +273,6 @@ export class FocusMode {
                 this.currentTask.totalTimeLogged = 0;
             }
             this.currentTask.totalTimeLogged += timeLogged;
-            
-
-            // ✅ Emit event to trigger UI update
-            document.dispatchEvent(new CustomEvent('taskUpdated', {
-                detail: { taskId: this.currentTask.id }
-            }));
                 
                 showToast(`🎉 Task "${this.currentTask.title}" completed!`);
                 this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
@@ -322,10 +316,6 @@ export class FocusMode {
             }
             this.currentTask.totalTimeLogged += timeLogged;
 
-            // ✅ Emit event to trigger UI update
-            document.dispatchEvent(new CustomEvent('taskUpdated', {
-                detail: { taskId: this.currentTask.id }
-            }));
             // If markComplete is true (passed from button), mark it done
             if (markComplete) {
                 updates.completed = true;

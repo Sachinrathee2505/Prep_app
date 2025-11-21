@@ -532,89 +532,126 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         });   
         return;
     }
-    // ✅ TIMER BUTTON
+    // ✅ TIMER BUTTON - Start/Stop
     else if (e.target.closest('.timer-btn')) {
-        try {
-            if (task.completed) {
-                showToast("Cannot start a timer on a completed task.");
-                return; 
+            try {
+                if (task.completed) {
+                    showToast("Cannot start a timer on a completed task.");
+                    return; 
+                }
+
+                const isRunning = !task.timerRunning; // Toggle status
+                const updates = { timerRunning: isRunning };
+                
+                if (isRunning) {
+                    // --- START TIMER ---
+                    updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+                    // Locally update Date so UI starts ticking immediately
+                    task.lastStartTime = new Date(); 
+                    console.log("⏱️ Timer started for task:", task.title);
+                } else {
+                    // --- STOP TIMER ---
+                    if (task.lastStartTime) {
+                        const lastStart = task.lastStartTime.toDate ? 
+                            task.lastStartTime.toDate() : 
+                            new Date(task.lastStartTime);            
+                        const duration = Math.round((new Date() - lastStart) / 1000);
+
+                        // 1. Database: Atomic Increment (Safe)
+                        updates.totalTimeLogged = firebase.firestore.FieldValue.increment(duration);
+                        updates.lastStartTime = null;
+
+                        // 2. Time Log
+                        await timeLogsCollection.add({
+                            taskId: taskId,
+                            duration: duration,
+                            category: task.category,
+                            timestamp: new Date(),
+                            userId: auth.currentUser.uid
+                        });
+                        
+                        // 3. Local Calculation: "TRUST THE UI"
+                        // Read the currently displayed time on the card to avoid stale data overwrites
+                        let currentVisualSeconds = task.totalTimeLogged || 0;
+                        const timerDisplay = card.querySelector('.timer-display');
+                        if (timerDisplay) {
+                            const text = timerDisplay.textContent.trim();
+                            const parts = text.split(':').map(Number);
+                            if (parts.length === 3) { // HH:MM:SS
+                                currentVisualSeconds = (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+                            } else if (parts.length === 2) { // MM:SS
+                                currentVisualSeconds = (parts[0] * 60) + parts[1];
+                            }
+                        }
+                        
+                        // Update local state
+                        task.totalTimeLogged = currentVisualSeconds + duration;
+                        task.lastStartTime = null;
+                        console.log(`⏹️ Timer stopped. Duration: ${duration}s. New Total: ${task.totalTimeLogged}`);
+                    }
+                }
+
+                // Update Firestore
+                await tasksCollection.doc(taskId).update(updates);
+                
+                // Update Local Object Safely (Remove sentinels before merging)
+                const localUpdates = { ...updates };
+                delete localUpdates.totalTimeLogged; 
+                delete localUpdates.lastStartTime;
+                
+                Object.assign(task, localUpdates);
+                ui.render();
+
+            } catch (error) {
+                console.error('❌ Error updating timer:', error);
+                showToast('Failed to update timer', 'error');
             }
-            const isRunning = !task.timerRunning;
-            const updates = { timerRunning: isRunning };
-            
-            if (isRunning) {
-                // --- START TIMER ---
-                // Remote: Use server timestamp
-                updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
-                
-                // Local: Use current date for immediate UI feedback
-                task.lastStartTime = new Date();
-                
-                console.log("⏱️ Timer started for task:", task.title);
-            } else if (task.lastStartTime) {
-                // --- STOP TIMER ---
-                const lastStart = task.lastStartTime.toDate ? 
-                    task.lastStartTime.toDate() : 
-                    new Date(task.lastStartTime);            
-                const duration = Math.round((new Date() - lastStart) / 1000);
+            return; 
+        }
 
-                // 1. Database: Atomic Increment
-                updates.totalTimeLogged = firebase.firestore.FieldValue.increment(duration);
-                updates.lastStartTime = null;
-
-                // 2. Time Log
-                await timeLogsCollection.add({
-                    taskId: taskId,
-                    duration: duration,
-                    category: task.category,
-                    timestamp: new Date(),
-                    userId: auth.currentUser.uid
-                });
-                
-                // 3. Local State: Manual Addition (Fixes the "Disappearing Time" bug)
-                task.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
-                task.lastStartTime = null;
-                
-                console.log(`⏹️ Timer stopped. Duration: ${duration}s.`);
+        // ✅ FOCUS BUTTON
+        if (e.target.closest('.focus-btn')) {
+            if (focusMode && !task.completed) {
+                focusMode.open(task);
             }
+            else if (task.completed) {
+                showToast("Cannot start a focus session on a completed task.");
+                return;
+            }
+        }
+    }
 
-            // Update Firestore
-            await tasksCollection.doc(taskId).update(updates);
-            
-            // ✅ CRITICAL FIX: Update local task object safely
-            // We create a copy of updates but REMOVE the Firestore Sentinel objects
-            // so they don't overwrite our correct local numbers/dates.
-            const localUpdates = { ...updates };
-            delete localUpdates.totalTimeLogged; // Don't overwrite our manual calculation
-            delete localUpdates.lastStartTime;   // Don't overwrite our local Date object
-            
-            Object.assign(task, localUpdates);
-            
-            // Refresh UI
-            ui.render();
-        } catch (error) {
-            console.error('❌ Error updating timer:', error);
-            if (typeof showToast === 'function') showToast('Failed to update timer', 'error');
+    // =================================================================================
+    // SECTION 7: GLOBAL LISTENERS (Outside functions!)
+    // =================================================================================
+
+    // ✅ ROBUST LISTENER: Retries if tasks aren't loaded yet
+    document.addEventListener('task-time-updated', (e) => {
+        const { taskId, addedSeconds } = e.detail;
+        
+        const updateLocalState = () => {
+            // Ensure appState.tasks exists
+            if (!appState.tasks) return false;
+
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.totalTimeLogged = (task.totalTimeLogged || 0) + addedSeconds;
+                console.log(`🔄 Synced focus time to local state: +${addedSeconds}s. New Total: ${task.totalTimeLogged}`);
+                ui.render();
+                return true; 
+            }
+            return false; 
+        };
+
+        // Attempt 1: Try immediately
+        if (!updateLocalState()) {
+            console.log("⚠️ Task not found in state yet. Retrying in 1s...");
+            // Attempt 2: Retry after 1 second (gives Firestore time to load)
+            setTimeout(() => {
+                if (!updateLocalState()) {
+                    // Attempt 3: Final retry after 3 seconds
+                    setTimeout(updateLocalState, 2000);
+                }
+            }, 1000);
         }
-        return; 
-    }
-    // ✅ FOCUS BUTTON - Start Focus Mode
-    if (e.target.closest('.focus-btn')) {
-        if (focusMode && !task.completed) {
-            focusMode.open(task);
-        }
-        else if (task.completed) {
-            showToast("Cannot start a focus session on a completed task.");
-            return;
-        }
-    }
-}
-document.addEventListener('task-time-updated', (e) => {
-    const { taskId, addedSeconds } = e.detail;
-    const task = appState.tasks.find(t => t.id === taskId);
-    if (task) {
-        task.totalTimeLogged = (task.totalTimeLogged || 0) + addedSeconds;
-        console.log(`🔄 Synced focus time to local state: +${addedSeconds}s`);
-        ui.render(); 
-    }
-});
+    });
