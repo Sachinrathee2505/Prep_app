@@ -34,7 +34,7 @@ let appState = {
   isLoading: true,
   activeFilter: 'active'
 };
-
+window.appState = appState;
 let focusMode = null;
 let achievementSystem = null;
 let ui = null;
@@ -283,7 +283,7 @@ async function initializeAppForUser(user, userProfile) {
     // Initialize all helper classes
     const streakTracker = new StreakTracker(user.uid);
     achievementSystem = new AchievementSystem({ db, uid: user.uid, confetti, tasksCollection, streakTracker, mainContent: mainContent });
-    focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection });
+    focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection, appState: appState });
     // Set up the real-time UI listener for the streak display
     streakTracker.streakRef.onSnapshot(doc => {
         const streakData = doc.data() || { current: 0 };
@@ -340,19 +340,30 @@ async function initializeAppForUser(user, userProfile) {
     ui.add3DTiltEffect();
 
 }
-
 function attachDataListeners(tasksCollection, skillsCollection) {
     tasksCollection.onSnapshot(snapshot => {
-    appState.tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (appState.isLoading) {
-        appState.isLoading = false;
-    }
-    ui.render();
+        // Map new data but PROTECT our optimistic updates
+        appState.tasks = snapshot.docs.map(doc => {
+            const serverData = doc.data();
+            const localTask = appState.tasks.find(t => t.id === doc.id);
+
+            if (localTask && (localTask.totalTimeLogged || 0) > (serverData.totalTimeLogged || 0)) {
+                serverData.totalTimeLogged = localTask.totalTimeLogged;
+            }
+
+            return { id: doc.id, ...serverData };
+        });
+
+        if (appState.isLoading) {
+            appState.isLoading = false;
+        }
+        ui.render();
     });
+
     skillsCollection.onSnapshot(snapshot => {
-    appState.skills = {};
-    snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
-    if (appState.currentView === 'skills') ui.render();
+        appState.skills = {};
+        snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
+        if (appState.currentView === 'skills') ui.render();
     });
 }
 
@@ -549,47 +560,30 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                     // Locally update Date so UI starts ticking immediately
                     task.lastStartTime = new Date(); 
                     console.log("⏱️ Timer started for task:", task.title);
-                } else {
-                    // --- STOP TIMER ---
-                    if (task.lastStartTime) {
-                        const lastStart = task.lastStartTime.toDate ? 
-                            task.lastStartTime.toDate() : 
-                            new Date(task.lastStartTime);            
-                        const duration = Math.round((new Date() - lastStart) / 1000);
+               } else if (task.lastStartTime) {
+                // --- STOP TIMER ---
+                const lastStart = task.lastStartTime.toDate ? 
+                    task.lastStartTime.toDate() : 
+                    new Date(task.lastStartTime);            
+                const duration = Math.round((new Date() - lastStart) / 1000);
 
-                        // 1. Database: Atomic Increment (Safe)
-                        updates.totalTimeLogged = firebase.firestore.FieldValue.increment(duration);
-                        updates.lastStartTime = null;
+                // 1. Database: Atomic Increment
+                updates.totalTimeLogged = firebase.firestore.FieldValue.increment(duration);
+                updates.lastStartTime = null;
 
-                        // 2. Time Log
-                        await timeLogsCollection.add({
-                            taskId: taskId,
-                            duration: duration,
-                            category: task.category,
-                            timestamp: new Date(),
-                            userId: auth.currentUser.uid
-                        });
-                        
-                        // 3. Local Calculation: "TRUST THE UI"
-                        // Read the currently displayed time on the card to avoid stale data overwrites
-                        let currentVisualSeconds = task.totalTimeLogged || 0;
-                        const timerDisplay = card.querySelector('.timer-display');
-                        if (timerDisplay) {
-                            const text = timerDisplay.textContent.trim();
-                            const parts = text.split(':').map(Number);
-                            if (parts.length === 3) { // HH:MM:SS
-                                currentVisualSeconds = (parts[0] * 3600) + (parts[1] * 60) + parts[2];
-                            } else if (parts.length === 2) { // MM:SS
-                                currentVisualSeconds = (parts[0] * 60) + parts[1];
-                            }
-                        }
-                        
-                        // Update local state
-                        task.totalTimeLogged = currentVisualSeconds + duration;
-                        task.lastStartTime = null;
-                        console.log(`⏹️ Timer stopped. Duration: ${duration}s. New Total: ${task.totalTimeLogged}`);
-                    }
-                }
+                // 2. Time Log
+                await timeLogsCollection.add({
+                    taskId: taskId,
+                    duration: duration,
+                    category: task.category,
+                    timestamp: new Date(),
+                    userId: auth.currentUser.uid
+                });
+                task.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
+                task.lastStartTime = null;
+                
+                console.log(`⏹️ Timer stopped. Duration: ${duration}s. New Total: ${task.totalTimeLogged}`);
+            }
 
                 // Update Firestore
                 await tasksCollection.doc(taskId).update(updates);
@@ -621,37 +615,48 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         }
     }
 
-    // =================================================================================
-    // SECTION 7: GLOBAL LISTENERS (Outside functions!)
-    // =================================================================================
-
-    // ✅ ROBUST LISTENER: Retries if tasks aren't loaded yet
     document.addEventListener('task-time-updated', (e) => {
-        const { taskId, addedSeconds } = e.detail;
+    console.log('📨 Received task-time-updated event:', e.detail);
+    const { taskId, addedSeconds, newTotal, markComplete } = e.detail;
+    
+    const updateLocalState = () => {
+        if (!appState.tasks) {
+            console.log('❌ appState.tasks not available');
+            return false;
+        }
+
+        const task = appState.tasks.find(t => t.id === taskId);
+        console.log('📍 Found task in appState:', task);
         
-        const updateLocalState = () => {
-            // Ensure appState.tasks exists
-            if (!appState.tasks) return false;
-
-            const task = appState.tasks.find(t => t.id === taskId);
-            if (task) {
-                task.totalTimeLogged = (task.totalTimeLogged || 0) + addedSeconds;
-                console.log(`🔄 Synced focus time to local state: +${addedSeconds}s. New Total: ${task.totalTimeLogged}`);
-                ui.render();
-                return true; 
+        if (task) {
+            const oldTotal = task.totalTimeLogged || 0;
+            if (newTotal !== undefined) {
+                task.totalTimeLogged = newTotal;
+            } else {
+                task.totalTimeLogged = oldTotal + addedSeconds;
             }
-            return false; 
-        };
-
-        // Attempt 1: Try immediately
+            
+            console.log(`✅ Updated: ${oldTotal}s → ${task.totalTimeLogged}s`);
+            
+            if (markComplete) {
+                task.completed = true;
+            }
+            
+            ui.render();
+            return true;
+        }
+        console.log('❌ Task not found in appState');
+        return false;
+    };
+        // Try immediately
         if (!updateLocalState()) {
-            console.log("⚠️ Task not found in state yet. Retrying in 1s...");
-            // Attempt 2: Retry after 1 second (gives Firestore time to load)
+            console.log("⚠️ Task not found in state yet. Retrying...");
+            // Retry after 500ms
             setTimeout(() => {
                 if (!updateLocalState()) {
-                    // Attempt 3: Final retry after 3 seconds
-                    setTimeout(updateLocalState, 2000);
+                    // Final retry after 1.5 seconds
+                    setTimeout(updateLocalState, 1000);
                 }
-            }, 1000);
+            }, 500);
         }
     });
