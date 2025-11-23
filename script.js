@@ -101,7 +101,6 @@ window.updateMobileUserInfo = () => {
 
 
 auth.onAuthStateChanged(async (user) => {         
-    document.getElementById('auth-loader-overlay')?.classList.add('hidden');
     if (user) {
         // ========================================
         // USER IS LOGGED IN
@@ -116,6 +115,7 @@ auth.onAuthStateChanged(async (user) => {
                 // SCENARIO 1: NEW USER (No profile found)
                 // ========================================
                 console.log('🆕 New user detected - showing onboarding');
+                document.getElementById('auth-loader-overlay')?.classList.add('hidden');
                 const onboardingModal = document.getElementById('onboarding-modal');
                 onboardingModal.classList.remove('hidden');
                 // Setup onboarding form submission (only once)
@@ -233,6 +233,7 @@ auth.onAuthStateChanged(async (user) => {
         } catch (error) {
             console.error('❌ Error loading user profile:', error);
             showToast('Failed to load profile. Please refresh the page.', 'error');
+            document.getElementById('auth-loader-overlay')?.classList.add('hidden');
         }
     } else {
         // ========================================
@@ -240,6 +241,7 @@ auth.onAuthStateChanged(async (user) => {
         // ========================================
         console.log('🔓 User logged out');              
         ui.updateNavigationVisibility(false);
+        document.getElementById('auth-loader-overlay')?.classList.add('hidden');
         // Reset app state
         appState = { 
             currentView: 'dashboard', 
@@ -357,6 +359,11 @@ function attachDataListeners(tasksCollection, skillsCollection) {
         if (appState.isLoading) {
             appState.isLoading = false;
         }
+        const loader = document.getElementById('auth-loader-overlay');
+            if (loader) {
+                loader.style.opacity = '0'; 
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
         ui.render();
     });
 
