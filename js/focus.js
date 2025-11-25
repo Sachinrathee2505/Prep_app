@@ -200,7 +200,10 @@ export class FocusMode {
         const minutes = Math.floor(Math.max(0, totalSeconds - elapsedSeconds) / 60);
         const seconds = Math.floor(Math.max(0, totalSeconds - elapsedSeconds) % 60);
         
-        this.timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        this.timerDisplay.textContent = timeString;
+        // ✅Update browser tab title
+        document.title = `(${timeString}) ${this.currentTask.title}`;
         this.progressBar.style.width = `${Math.min(100, (elapsedSeconds / totalSeconds) * 100)}%`;
     }
 
@@ -365,6 +368,7 @@ export class FocusMode {
         this.isBreak = false;
         clearInterval(this.interval);
         localStorage.removeItem('focusSession');
+        document.title = "Level Up Hub 🌟";
     }
 
     updateDashboardUI(addedSeconds) {
@@ -404,4 +408,5 @@ export class FocusMode {
             }
         }));
     }
+
 }
