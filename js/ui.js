@@ -1078,6 +1078,12 @@ export class UI {
             subtaskList.appendChild(newSubtask);
             newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
         };
+        // Auto-focus the title input so user can type immediately
+        const titleInput = document.getElementById('task-title');
+        if (titleInput) {
+            // Small timeout ensures the modal is fully rendered
+            setTimeout(() => titleInput.focus(), 50);
+        }
     }
 
     async _updateSkill(skillName, rating, skillsCollection) {
@@ -1390,4 +1396,5 @@ export class UI {
         newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
         return newSubtask;
     }
+
 }
