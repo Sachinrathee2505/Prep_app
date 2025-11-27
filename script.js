@@ -667,3 +667,32 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
             }, 500);
         }
     });
+    // ✅ KEYBOARD SHORTCUTS
+document.addEventListener('keydown', (e) => {
+    // Ignore if typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // 1. Shift + N = Add New Task
+    if (e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+        e.preventDefault();
+        // Calls your existing global helper
+        window.handleQuickAction('addTask'); 
+    }
+
+    // 2. Escape = Close Modals / Focus Overlay
+    if (e.key === 'Escape') {
+        // Check for Focus Overlay first
+        const focusOverlay = document.getElementById('focusMode');
+        if (focusOverlay && !focusOverlay.classList.contains('hidden')) {
+            // We don't close focus mode on Esc (to prevent accidents), 
+            // but we could minimize or ask confirmation. 
+            // For now, let's just close standard modals.
+        } else {
+            // Close standard modals
+            const modalContainer = document.getElementById('modal-container');
+            if (modalContainer && modalContainer.innerHTML !== '') {
+                ui.modalContainer.innerHTML = ''; // Or call closeModal() if exported
+            }
+        }
+    }
+});
