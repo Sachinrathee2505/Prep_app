@@ -667,32 +667,82 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
             }, 500);
         }
     });
-    // ✅ KEYBOARD SHORTCUTS
+// ✅ KEYBOARD SHORTCUTS
 document.addEventListener('keydown', (e) => {
-    // Ignore if typing in an input field
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const activeElement = document.activeElement;
+    const isTyping = activeElement.tagName === 'INPUT' || 
+                     activeElement.tagName === 'TEXTAREA' ||
+                     activeElement.isContentEditable;
+
+    // Allow Escape even when typing
+    if (isTyping && e.key !== 'Escape') return;
 
     // 1. Shift + N = Add New Task
-    if (e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+    if (e.shiftKey && e.key.toLowerCase() === 'n') {
         e.preventDefault();
-        // Calls your existing global helper
-        window.handleQuickAction('addTask'); 
+        window.handleQuickAction?.('addTask');
+        return;
     }
 
-    // 2. Escape = Close Modals / Focus Overlay
+    // 2. Escape = Smart Close (Priority-based)
     if (e.key === 'Escape') {
-        // Check for Focus Overlay first
-        const focusOverlay = document.getElementById('focusMode');
-        if (focusOverlay && !focusOverlay.classList.contains('hidden')) {
-            // We don't close focus mode on Esc (to prevent accidents), 
-            // but we could minimize or ask confirmation. 
-            // For now, let's just close standard modals.
-        } else {
-            // Close standard modals
-            const modalContainer = document.getElementById('modal-container');
-            if (modalContainer && modalContainer.innerHTML !== '') {
-                ui.modalContainer.innerHTML = ''; // Or call closeModal() if exported
-            }
-        }
+        handleEscapeKey();
+        return;
+    }
+
+    // 3. Navigation Shortcuts (Shift + Key)
+    if (e.shiftKey && !e.ctrlKey && !e.altKey) {
+        handleNavigationShortcuts(e);
     }
 });
+
+// ✅ Extracted for cleaner main handler
+function handleEscapeKey() {
+    // Priority 1: Focus Mode - Protected
+    const focusOverlay = document.getElementById('focusMode');
+    if (focusOverlay && !focusOverlay.classList.contains('hidden')) {
+        console.log('🎯 Focus mode active - use button to exit');
+        return;
+    }
+
+    // Priority 2: Modals
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer && modalContainer.innerHTML.trim() !== '') {
+        ui?.closeModal?.() ?? (modalContainer.innerHTML = '');
+        return;
+    }
+
+    // Priority 3: Dropdowns & Menus
+    closeAllDropdowns();
+}
+
+// ✅ Navigation shortcuts handler
+function handleNavigationShortcuts(e) {
+    const shortcuts = {
+        'd': 'dashboard',
+        's': 'skills',
+        'i': 'insights',
+    };
+
+    const page = shortcuts[e.key.toLowerCase()];
+    if (page) {
+        e.preventDefault();
+        ui?.navigate?.(page);
+    }
+}
+
+// ✅ Dropdown closer
+function closeAllDropdowns() {
+    // User Menu
+    document.getElementById('user-menu')?.classList.add('hidden');
+
+    // Mobile Menu (trigger close button for animations)
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+        document.getElementById('mobile-menu-close')?.click();
+    }
+
+    // Generic: Close any other open dropdowns
+    document.querySelectorAll('[data-dropdown].open')
+        .forEach(el => el.classList.add('hidden'));
+}
