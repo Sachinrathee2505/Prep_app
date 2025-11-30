@@ -319,7 +319,7 @@ export class UI {
                 <div class="flex justify-between items-start">
                     <div class="flex-grow">
                         <h3 class="font-bold">${task.title}</h3>
-                        <p class="text-sm text-gray-400">Due: ${new Date(task.dueDate).toLocaleDateString()}</p>
+                        <div class="text-sm mt-0.5">${this.getSmartDateDisplay(task.dueDate)}</div>
                         ${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}
                         <div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div>
                     </div>
@@ -1396,5 +1396,64 @@ export class UI {
         newSubtask.querySelector('.remove-subtask-btn').onclick = () => newSubtask.remove();
         return newSubtask;
     }
-
+    // ✅ Helper to humanize dates with smart relative display
+    getSmartDateDisplay(dateString) {
+        if (!dateString) return '';
+        
+        // Parse the date - handle potential invalid dates
+        const due = new Date(dateString);
+        if (isNaN(due.getTime())) {
+            console.warn('Invalid date string:', dateString);
+            return '<span class="text-gray-500">Invalid date</span>';
+        }
+        
+        // Reset time to midnight for accurate day comparison
+        due.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Calculate difference in days
+        const diffTime = due - today;
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        // Configuration for cleaner maintenance
+        const formatOptions = {
+            weekday: { weekday: 'long' },
+            short: { month: 'short', day: 'numeric' },
+            withYear: { month: 'short', day: 'numeric', year: 'numeric' }
+        };
+        
+        // Return styled HTML based on urgency
+        if (diffDays < 0) {
+            const daysOverdue = Math.abs(diffDays);
+            const dayLabel = daysOverdue === 1 ? 'day' : 'days';
+            return `<span class="text-red-400 font-bold flex items-center gap-1">
+                ⚠️ Overdue by ${daysOverdue} ${dayLabel}
+            </span>`;
+        }
+        
+        if (diffDays === 0) {
+            return `<span class="text-orange-400 font-bold animate-pulse flex items-center gap-1">
+                🔥 Due Today
+            </span>`;
+        }
+        
+        if (diffDays === 1) {
+            return `<span class="text-yellow-400 font-medium">📅 Due Tomorrow</span>`;
+        }
+        
+        if (diffDays < 7) {
+            const dayName = due.toLocaleDateString('en-US', formatOptions.weekday);
+            return `<span class="text-cyan-200">📆 Due ${dayName}</span>`;
+        }
+        
+        // Check if it's a different year
+        const dueYear = due.getFullYear();
+        const currentYear = today.getFullYear();
+        const format = dueYear !== currentYear ? formatOptions.withYear : formatOptions.short;
+        
+        return `<span class="text-gray-400">
+            Due ${due.toLocaleDateString(undefined, format)}
+        </span>`;
+    }
 }
