@@ -12,7 +12,16 @@ import {
     hideLoadingOverlay
 } from './utils.js';
 import { db } from './firebase.js';
-
+const SKILLS_CONFIG = Object.freeze({
+    MIN_RADAR_POINTS: 3,
+    MAX_RATING: 5,
+    CHART_HEIGHT: 300,
+    COLORS: Object.freeze({
+        grid: 'rgba(255, 255, 255, 0.1)',
+        labels: '#e5e7eb',
+        fallback: '#22d3ee'
+    })
+});
 export class UI {
     constructor(config) {
         // Store state and core elements from the main script
@@ -538,27 +547,403 @@ export class UI {
         return '';
     }
 
-    // --- Skills Page ---
+
+// --- Skills Page (Multi-Chart Version) ---
 
     renderSkillsDashboard() {
-        this.mainContent.innerHTML = `<div class="bg-gray-800 rounded-lg p-6"><h2 class="text-2xl font-bold mb-6 text-cyan-400"> Skill Rating Matrix</h2><div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
-        const grid = document.getElementById('skills-grid');
-        if (Object.keys(this.appState.skills).length === 0) {
-          grid.innerHTML = `<p class="text-gray-400 col-span-full">No skills tracked yet. Complete tasks with skill tags to see your progress!</p>`;
-          return;
+        // 1. Prepare Container
+        this.mainContent.innerHTML = this.getSkillsDashboardTemplate();
+
+        // 2. Map Skills to Categories
+        const skillsByCategory = this.mapSkillsToCategories();
+        const chartsContainer = document.getElementById('charts-container');
+
+        // 3. Clean up old chart instances to prevent memory leaks
+        this.destroyActiveCharts();
+
+        // 4. Render a Chart for each Category
+        this.renderCategoryCharts(skillsByCategory, chartsContainer);
+
+        // 5. Render the skills grid
+        this.renderSkillsGrid();
+    }
+
+    // ✅ Extracted template for cleaner main method
+    getSkillsDashboardTemplate() {
+        return `
+            <div class="space-y-8">
+                <!-- Header -->
+                <div class="bg-gray-800 rounded-lg p-6 border-l-4 border-cyan-500">
+                    <h2 class="text-2xl font-bold mb-2 text-white">
+                        Skill Proficiency Matrix
+                    </h2>
+                    <p class="text-gray-400 text-sm">
+                        A breakdown of your strengths across your different Focus Areas.
+                    </p>
+                </div>
+
+                <!-- Charts Container -->
+                <div id="charts-container" 
+                    class="grid grid-cols-1 md:grid-cols-2 gap-6"
+                    role="region" 
+                    aria-label="Skill charts by category">
+                </div>
+
+                <!-- Skills Grid Section -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                        ${this.getGridIcon()}
+                        All Skills
+                    </h3>
+                    <div id="skills-grid" 
+                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                        role="list"
+                        aria-label="All tracked skills">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ✅ SVG extracted for reusability
+    getGridIcon() {
+        return `
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" 
+                viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+        `;
+    }
+
+    // ✅ Centralized chart cleanup
+    destroyActiveCharts() {
+        if (this.activeCharts?.length) {
+            this.activeCharts.forEach(chart => {
+                try {
+                    chart.destroy();
+                } catch (error) {
+                    console.warn('Failed to destroy chart:', error);
+                }
+            });
         }
-        const getSkillAvg = (skill) => {
-            return skill.count > 0 ? (skill.totalConfidence / skill.count) : 0;
-        };
-        Object.values(this.appState.skills)
-            .sort((a, b) => getSkillAvg(a) - getSkillAvg(b)) // Sort by the safe average
-            .forEach(skill => {
-          const average = getSkillAvg(skill);
-          const skillCard = document.createElement('div');
-          skillCard.className = 'bg-gray-700 p-4 rounded-lg flex flex-col justify-between';
-          skillCard.innerHTML = `<div><h3 class="font-bold text-lg">${skill.name}</h3><p class="text-sm text-gray-400">Rated ${skill.count} time(s)</p></div><div class="mt-4"><p class="text-sm text-gray-300">Confidence: ${average.toFixed(1)} / 5.0</p><div class="w-full bg-gray-600 rounded-full h-2.5 mt-1"><div class="bg-cyan-600 h-2.5 rounded-full" style="width: ${average / 5 * 100}%"></div></div></div>`;
-          grid.appendChild(skillCard);
+        this.activeCharts = [];
+    }
+
+    // ✅ Helper: Link skills to categories based on Task History
+    mapSkillsToCategories() {
+        const mapping = new Map();
+        
+        // Initialize mapping for all known categories
+        this.appState.userCategories.forEach(cat => {
+            mapping.set(cat.id, new Map()); // Use Map to dedupe by skill name
         });
+
+        // Scan tasks to find associations
+        this.appState.tasks.forEach(task => {
+            if (!task.skills?.length || !task.category) return;
+            
+            // Ensure category exists in mapping
+            if (!mapping.has(task.category)) {
+                mapping.set(task.category, new Map());
+            }
+            
+            const categorySkills = mapping.get(task.category);
+            
+            task.skills.forEach(skillName => {
+                const skillObj = this.appState.skills[skillName];
+                if (skillObj) {
+                    // Use skill name as key to prevent duplicates
+                    categorySkills.set(skillName, skillObj);
+                }
+            });
+        });
+
+        // Convert Maps to plain object with arrays
+        const result = {};
+        mapping.forEach((skillsMap, categoryId) => {
+            result[categoryId] = Array.from(skillsMap.values());
+        });
+        
+        return result;
+    }
+
+    // ✅ Separated chart rendering logic
+    renderCategoryCharts(skillsByCategory, container) {
+        const categoriesToRender = this.appState.userCategories.filter(category => {
+            const skills = skillsByCategory[category.id] || [];
+            return skills.length >= SKILLS_CONFIG.MIN_RADAR_POINTS;
+        });
+
+        if (categoriesToRender.length === 0) {
+            container.innerHTML = this.getNoChartsPlaceholder();
+            return;
+        }
+
+        categoriesToRender.forEach(category => {
+            const categorySkills = skillsByCategory[category.id];
+            this.renderCategoryChart(category, categorySkills, container);
+        });
+    }
+
+    // ✅ Placeholder for empty state
+    getNoChartsPlaceholder() {
+        return `
+            <div class="col-span-full bg-gray-800 rounded-lg p-8 text-center">
+                <div class="text-4xl mb-4">📊</div>
+                <h3 class="text-lg font-medium text-gray-300 mb-2">
+                    Not Enough Data for Charts
+                </h3>
+                <p class="text-gray-500 text-sm">
+                    Complete more tasks with skills to see radar charts. 
+                    Each category needs at least ${SKILLS_CONFIG.MIN_RADAR_POINTS} different skills.
+                </p>
+            </div>
+        `;
+    }
+
+    renderCategoryChart(category, skills, container) {
+        const chartId = `chart-${category.id}`;
+        const chartCard = this.createChartCard(category, chartId);
+        container.appendChild(chartCard);
+
+        const ctx = document.getElementById(chartId);
+        if (!ctx) {
+            console.error(`Canvas element not found: ${chartId}`);
+            return;
+        }
+
+        const chartData = this.prepareChartData(category, skills);
+        const chartOptions = this.getRadarChartOptions(category);
+
+        try {
+            const newChart = new this.Chart(ctx, {
+                type: 'radar',
+                data: chartData,
+                options: chartOptions
+            });
+            this.activeCharts.push(newChart);
+        } catch (error) {
+            console.error(`Failed to create chart for ${category.name}:`, error);
+            ctx.parentElement.innerHTML = `
+                <p class="text-red-400 text-center">Failed to load chart</p>
+            `;
+        }
+    }
+
+    // ✅ Extracted chart card creation
+    createChartCard(category, chartId) {
+        const chartCard = document.createElement('div');
+        chartCard.className = 'bg-gray-800 rounded-lg p-4 shadow-lg flex flex-col items-center';
+        chartCard.innerHTML = `
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2" 
+                style="color: ${this.sanitizeColor(category.color)}">
+                <span aria-hidden="true">${category.icon || '🎯'}</span>
+                ${this.escapeHtml(category.name)}
+            </h3>
+            <div class="w-full relative" style="height: ${SKILLS_CONFIG.CHART_HEIGHT}px;">
+                <canvas id="${chartId}" role="img" 
+                        aria-label="Radar chart showing skill proficiency for ${this.escapeHtml(category.name)}">
+                </canvas>
+            </div>
+        `;
+        return chartCard;
+    }
+
+    // ✅ Extracted chart data preparation
+    prepareChartData(category, skills) {
+        const color = category.color || SKILLS_CONFIG.COLORS.fallback;
+        
+        return {
+            labels: skills.map(s => s.name),
+            datasets: [{
+                label: 'Proficiency',
+                data: skills.map(s => this.calculateSkillAverage(s)),
+                backgroundColor: this.hexToRgba(color, 0.2),
+                borderColor: color,
+                borderWidth: 2,
+                pointBackgroundColor: '#1f2937',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: color,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        };
+    }
+
+    // ✅ Extracted chart options
+    getRadarChartOptions(category) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: SKILLS_CONFIG.COLORS.grid },
+                    grid: { color: SKILLS_CONFIG.COLORS.grid },
+                    pointLabels: { 
+                        color: SKILLS_CONFIG.COLORS.labels, 
+                        font: { size: 11, weight: '500' }
+                    },
+                    ticks: {
+                        display: false,
+                        maxTicksLimit: 5,
+                        backdropColor: 'transparent'
+                    },
+                    suggestedMin: 0,
+                    suggestedMax: SKILLS_CONFIG.MAX_RATING
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#e5e7eb',
+                    borderColor: category.color || SKILLS_CONFIG.COLORS.fallback,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (context) => {
+                            const value = context.raw?.toFixed(1) ?? '0.0';
+                            return ` Rating: ${value} / ${SKILLS_CONFIG.MAX_RATING}.0`;
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false
+            }
+        };
+    }
+
+    // ✅ Reusable skill average calculator
+    calculateSkillAverage(skill) {
+        if (!skill || skill.count <= 0) return 0;
+        return Math.min(skill.totalConfidence / skill.count, SKILLS_CONFIG.MAX_RATING);
+    }
+
+    renderSkillsGrid() {
+        const grid = document.getElementById('skills-grid');
+        if (!grid) return;
+
+        const skillsArray = Object.values(this.appState.skills || {});
+        
+        if (skillsArray.length === 0) {
+            grid.innerHTML = this.getEmptySkillsMessage();
+            return;
+        }
+
+        // Sort by average rating (highest first)
+        const sortedSkills = this.sortSkillsByRating(skillsArray);
+
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+        sortedSkills.forEach(skill => {
+            fragment.appendChild(this.createSkillCard(skill));
+        });
+        
+        grid.appendChild(fragment);
+    }
+
+    // ✅ Extracted empty state
+    getEmptySkillsMessage() {
+        return `
+            <div class="col-span-full text-center py-8">
+                <div class="text-4xl mb-3">🎯</div>
+                <p class="text-gray-400">No skills tracked yet.</p>
+                <p class="text-gray-500 text-sm mt-1">
+                    Complete tasks with skill ratings to build your profile.
+                </p>
+            </div>
+        `;
+    }
+
+    // ✅ Extracted sorting logic
+    sortSkillsByRating(skills) {
+        return [...skills].sort((a, b) => {
+            const avgA = this.calculateSkillAverage(a);
+            const avgB = this.calculateSkillAverage(b);
+            return avgB - avgA;
+        });
+    }
+
+    // ✅ Extracted skill card creation
+    createSkillCard(skill) {
+        const average = this.calculateSkillAverage(skill);
+        const percentage = (average / SKILLS_CONFIG.MAX_RATING) * 100;
+        const level = Math.floor(average);
+        const ratingColor = this.getRatingColor(average);
+        
+        const card = document.createElement('div');
+        card.className = 'bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-gray-500 transition-colors';
+        card.setAttribute('role', 'listitem');
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <h4 class="font-bold text-white truncate pr-2" title="${this.escapeHtml(skill.name)}">
+                    ${this.escapeHtml(skill.name)}
+                </h4>
+                <span class="text-xs ${ratingColor} px-2 py-1 rounded whitespace-nowrap">
+                    Lvl ${level}
+                </span>
+            </div>
+            <div class="w-full bg-gray-900 rounded-full h-1.5 mb-2" 
+                role="progressbar" 
+                aria-valuenow="${average.toFixed(1)}" 
+                aria-valuemin="0" 
+                aria-valuemax="${SKILLS_CONFIG.MAX_RATING}">
+                <div class="bg-gradient-to-r from-cyan-600 to-cyan-400 h-1.5 rounded-full transition-all duration-300" 
+                    style="width: ${percentage}%">
+                </div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-400">
+                <span>${skill.count} ${skill.count === 1 ? 'task' : 'tasks'}</span>
+                <span>${average.toFixed(1)} / ${SKILLS_CONFIG.MAX_RATING}</span>
+            </div>
+        `;
+        
+        return card;
+    }
+
+    // ✅ Dynamic color based on rating
+    getRatingColor(average) {
+        if (average >= 4) return 'bg-green-900 text-green-400';
+        if (average >= 3) return 'bg-cyan-900 text-cyan-400';
+        if (average >= 2) return 'bg-yellow-900 text-yellow-400';
+        return 'bg-gray-900 text-gray-400';
+    }
+
+    // ✅ Utility: Safe color hex to rgba
+    hexToRgba(hex, alpha = 1) {
+        // Remove # if present
+        const cleanHex = hex.replace('#', '');
+        
+        // Handle 3-character hex
+        const fullHex = cleanHex.length === 3
+            ? cleanHex.split('').map(c => c + c).join('')
+            : cleanHex;
+        
+        const r = parseInt(fullHex.substring(0, 2), 16) || 0;
+        const g = parseInt(fullHex.substring(2, 4), 16) || 0;
+        const b = parseInt(fullHex.substring(4, 6), 16) || 0;
+        
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // ✅ Security: Sanitize color values
+    sanitizeColor(color) {
+        if (!color) return SKILLS_CONFIG.COLORS.fallback;
+        // Only allow valid hex colors
+        const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+        return hexPattern.test(color) ? color : SKILLS_CONFIG.COLORS.fallback;
+    }
+
+    // ✅ Security: Escape HTML to prevent XSS
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // --- Insights Page ---
