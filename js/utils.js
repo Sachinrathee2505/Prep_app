@@ -46,13 +46,28 @@ function showUndoToast(message, onUndo) {
 }
 
 function closeModal() {
-  // Find the modal container element inside the function
-  const modalContainer = document.getElementById('modal-container');
-  
-  // Check if it exists before trying to change it
-  if (modalContainer) {
-    modalContainer.innerHTML = '';
-  }
+    const modalContainer = document.getElementById('modal-container');
+    if (!modalContainer?.firstElementChild) {
+        if (modalContainer) modalContainer.innerHTML = '';
+        return;
+    }
+
+    const backdrop = modalContainer.firstElementChild;
+    const card = backdrop.querySelector(':scope > div');
+
+    // Animate out
+    backdrop.style.transition = 'opacity 200ms ease-out';
+    backdrop.style.opacity = '0';
+
+    if (card) {
+        card.style.transition = 'all 200ms ease-out';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95) translateY(10px)';
+    }
+
+    setTimeout(() => {
+        modalContainer.innerHTML = '';
+    }, 200);
 }
 
 function getWeekRange(date) {

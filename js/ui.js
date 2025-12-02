@@ -1484,23 +1484,225 @@ export class UI {
           }
         });
     }
-
+    
     showSkillRatingModal(task, skillsCollection) {
+        // Guard clause
         if (!task.skills || task.skills.length === 0) return;
-        this.modalContainer.innerHTML = `<div id="skill-rating-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"><div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"><h2 class="text-xl font-bold mb-4">Rate Your Confidence</h2><p class="mb-4 text-gray-300">How confident do you feel with these skills after completing "${task.title}"?</p><div id="skills-to-rate" class="space-y-4">${task.skills.map(skill => `<div class="skill-rating-item" data-skill="${skill}"><label class="block font-medium text-gray-200">${skill}</label><div class="star-rating flex items-center space-x-1 text-2xl text-gray-500 mt-1" data-rating="0">${[1,2,3,4,5].map(i => `<svg data-value="${i}" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>`).join('')}</div></div>`).join('')}</div><div class="mt-6 flex justify-end"><button id="submit-ratings-btn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold">Submit Ratings</button></div></div></div>`;
+
+        // Render modal HTML
+        this.modalContainer.innerHTML = this.getSkillRatingModalTemplate(task);
+
+        // Setup star rating interactions
+        this.initializeStarRatings();
+
+        // Setup submit button
+        this.initializeSubmitButton(skillsCollection);
+    }
+
+    // ✅ Extracted template for readability
+    getSkillRatingModalTemplate(task) {
+        const skillsHtml = task.skills.map(skill => this.getSkillRatingItem(skill)).join('');
         
-        document.querySelectorAll('.star-rating').forEach(ratingContainer => {
-          const stars = ratingContainer.querySelectorAll('svg');
-          ratingContainer.onmouseover = e => { if (e.target.tagName === 'svg') { const hoverValue = e.target.dataset.value; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= hoverValue)); } };
-          ratingContainer.onmouseout = () => { const currentRating = ratingContainer.dataset.rating; stars.forEach(star => star.classList.toggle('text-yellow-400', star.dataset.value <= currentRating)); };
-          ratingContainer.onclick = e => { if (e.target.tagName === 'svg') { ratingContainer.dataset.rating = e.target.dataset.value; } };
+        return `
+            <div id="skill-rating-modal" 
+                class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="rating-modal-title">
+                
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+                    <!-- Header -->
+                    <h2 id="rating-modal-title" class="text-xl font-bold mb-4 text-white">
+                        Rate Your Confidence
+                    </h2>
+                    
+                    <p class="mb-4 text-gray-300">
+                        How confident do you feel with these skills after completing 
+                        "<span class="text-cyan-400">${this.escapeHtml(task.title)}</span>"?
+                    </p>
+
+                    <!-- Skills to Rate -->
+                    <div id="skills-to-rate" class="space-y-4">
+                        ${skillsHtml}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button id="cancel-ratings-btn" 
+                                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-gray-300 font-medium transition-colors">
+                            Skip
+                        </button>
+                        <button id="submit-ratings-btn" 
+                                class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md text-white font-semibold transition-colors">
+                            Submit Ratings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ✅ Individual skill rating item template
+    getSkillRatingItem(skill) {
+        const stars = [1, 2, 3, 4, 5].map(value => `
+            <button type="button"
+                    class="star-btn h-8 w-8 text-gray-500 hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+                    data-value="${value}"
+                    aria-label="Rate ${value} out of 5 stars">
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                    class="h-8 w-8 pointer-events-none" 
+                    viewBox="0 0 20 20" 
+                    fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+            </button>
+        `).join('');
+
+        return `
+            <div class="skill-rating-item bg-gray-700/50 p-3 rounded-lg" data-skill="${this.escapeHtml(skill)}">
+                <label class="block font-medium text-gray-200 mb-2">
+                    ${this.escapeHtml(skill)}
+                </label>
+                <div class="star-rating flex items-center gap-1" 
+                    data-rating="0"
+                    role="radiogroup"
+                    aria-label="Rating for ${this.escapeHtml(skill)}">
+                    ${stars}
+                </div>
+            </div>
+        `;
+    }
+
+    // ✅ Star rating interaction logic
+    initializeStarRatings() {
+        document.querySelectorAll('.star-rating').forEach(container => {
+            const stars = container.querySelectorAll('.star-btn');
+
+            // Update star display based on rating value
+            const updateStars = (rating) => {
+                stars.forEach(star => {
+                    const value = parseInt(star.dataset.value);
+                    const isActive = value <= rating;
+                    star.classList.toggle('text-yellow-400', isActive);
+                    star.classList.toggle('text-gray-500', !isActive);
+                });
+            };
+
+            // Hover effect
+            container.addEventListener('mouseover', (e) => {
+                const star = e.target.closest('.star-btn');
+                if (star) {
+                    updateStars(parseInt(star.dataset.value));
+                }
+            });
+
+            // Reset on mouse leave
+            container.addEventListener('mouseleave', () => {
+                updateStars(parseInt(container.dataset.rating));
+            });
+
+            // Click to set rating
+            container.addEventListener('click', (e) => {
+                const star = e.target.closest('.star-btn');
+                if (star) {
+                    const rating = star.dataset.value;
+                    container.dataset.rating = rating;
+                    updateStars(parseInt(rating));
+                    
+                    // Visual feedback
+                    star.classList.add('scale-125');
+                    setTimeout(() => star.classList.remove('scale-125'), 150);
+                }
+            });
+
+            // Keyboard navigation
+            container.addEventListener('keydown', (e) => {
+                const currentRating = parseInt(container.dataset.rating) || 0;
+                
+                if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const newRating = Math.min(currentRating + 1, 5);
+                    container.dataset.rating = newRating;
+                    updateStars(newRating);
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const newRating = Math.max(currentRating - 1, 0);
+                    container.dataset.rating = newRating;
+                    updateStars(newRating);
+                }
+            });
         });
-        document.getElementById('submit-ratings-btn').onclick = async () => {
-          const ratings = Array.from(document.querySelectorAll('.skill-rating-item')).map(item => ({ skill: item.dataset.skill, rating: parseInt(item.querySelector('.star-rating').dataset.rating) }));
-          const validRatings = ratings.filter(r => r.rating > 0);
-          if (validRatings.length > 0) await Promise.all(validRatings.map(r => this._updateSkill(r.skill, r.rating, skillsCollection)));
-          closeModal();
+    }
+
+    // ✅ Submit button handler
+    initializeSubmitButton(skillsCollection) {
+        const submitBtn = document.getElementById('submit-ratings-btn');
+        const cancelBtn = document.getElementById('cancel-ratings-btn');
+
+        // Submit ratings
+        submitBtn?.addEventListener('click', async () => {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const ratings = this.collectRatings();
+                const validRatings = ratings.filter(r => r.rating > 0);
+
+                if (validRatings.length > 0) {
+                    await Promise.all(
+                        validRatings.map(r => 
+                            this._updateSkill(r.skill, r.rating, skillsCollection)
+                        )
+                    );
+                    
+                    this.showToast?.(`Updated ${validRatings.length} skill(s)!`, 'success');
+                }
+
+                closeModal();
+            } catch (error) {
+                console.error('Failed to save skill ratings:', error);
+                this.showToast?.('Failed to save ratings', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Ratings';
+            }
+        });
+
+        // Cancel/Skip button
+        cancelBtn?.addEventListener('click', () => {
+            closeModal();
+        });
+
+        // Close on backdrop click
+        document.getElementById('skill-rating-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'skill-rating-modal') {
+                closeModal();
+            }
+        });
+
+        // Close on Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
         };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    // ✅ Collect all ratings from the form
+    collectRatings() {
+        return Array.from(document.querySelectorAll('.skill-rating-item')).map(item => ({
+            skill: item.dataset.skill,
+            rating: parseInt(item.querySelector('.star-rating').dataset.rating) || 0
+        }));
+    }
+
+    // ✅ HTML escape utility
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     showWeeklyReportModal = async (timeLogsCollection, tasksCollection) =>{
