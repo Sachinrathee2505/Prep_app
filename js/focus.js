@@ -408,5 +408,4 @@ export class FocusMode {
             }
         }));
     }
-
 }

@@ -630,20 +630,29 @@ export class UI {
         this.activeCharts = [];
     }
 
-    // ✅ Helper: Link skills to categories based on Task History
+    // ✅ Helper: Link skills to categories
     mapSkillsToCategories() {
         const mapping = new Map();
         
-        // Initialize mapping for all known categories
-        this.appState.userCategories.forEach(cat => {
-            mapping.set(cat.id, new Map()); // Use Map to dedupe by skill name
+        // 1. Safety Check: Ensure userCategories exists and is an array
+        const categories = Array.isArray(this.appState.userCategories) 
+            ? this.appState.userCategories 
+            : [];
+
+        // Initialize mapping
+        categories.forEach(cat => {
+            mapping.set(cat.id, new Map()); 
         });
 
-        // Scan tasks to find associations
-        this.appState.tasks.forEach(task => {
+        // 2. Safety Check: Ensure tasks exist
+        const tasks = Array.isArray(this.appState.tasks) 
+            ? this.appState.tasks 
+            : [];
+
+        // Scan tasks
+        tasks.forEach(task => {
             if (!task.skills?.length || !task.category) return;
             
-            // Ensure category exists in mapping
             if (!mapping.has(task.category)) {
                 mapping.set(task.category, new Map());
             }
@@ -651,15 +660,13 @@ export class UI {
             const categorySkills = mapping.get(task.category);
             
             task.skills.forEach(skillName => {
-                const skillObj = this.appState.skills[skillName];
-                if (skillObj) {
-                    // Use skill name as key to prevent duplicates
-                    categorySkills.set(skillName, skillObj);
+                // 3. Safety Check: Ensure skills exist
+                if (this.appState.skills && this.appState.skills[skillName]) {
+                    categorySkills.set(skillName, this.appState.skills[skillName]);
                 }
             });
         });
 
-        // Convert Maps to plain object with arrays
         const result = {};
         mapping.forEach((skillsMap, categoryId) => {
             result[categoryId] = Array.from(skillsMap.values());

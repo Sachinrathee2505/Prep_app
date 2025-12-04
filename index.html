@@ -19,6 +19,7 @@
                 https://cdn.jsdelivr.net
                 https://cdnjs.cloudflare.com
                 https://www.gstatic.com
+                https://apis.google.com
                 https://www.googletagmanager.com;
 
             style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
@@ -309,22 +310,80 @@
       <button class="focus-btn focus-btn-primary" id="skipBreakBtn">Skip Break</button>
     </div>
   </div>
-  <div id="onboarding-modal" class="hidden fixed inset-0 bg-gray-900 z-50 flex items-center justify-center p-4">
-          <div class="w-full max-w-lg text-center">
-              <h1 class="text-3xl font-bold text-white mb-2">Welcome to Level Up Hub!</h1>
-              <p class="text-gray-400 mb-8">Let's set up your main areas of focus. What are the three pillars of your study plan?</p>
-              
-              <form id="onboarding-form" class="space-y-4">
-                  <input type="text" id="category1" placeholder="Focus Area #1 (e.g., Data Structures)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
-                  <input type="text" id="category2" placeholder="Focus Area #2 (e.g., System Design)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
-                  <input type="text" id="category3" placeholder="Focus Area #3 (e.g., Company Applications)" class="w-full bg-gray-800 border border-gray-700 rounded-md p-3 text-white focus:ring-cyan-500 focus:border-cyan-500" required>
-                  
-                  <button type="submit" class="w-full px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors">
-                      Get Started
-                  </button>
-              </form>
-          </div>
-  </div>
+    <!-- Onboarding Modal -->
+    <div id="onboarding-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-700">
+            <!-- Header -->
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-3">🚀</div>
+                <h2 class="text-2xl font-bold text-white mb-2">
+                    Welcome to Level Up Hub!
+                </h2>
+                <p class="text-gray-400">
+                    Let's set up your focus areas to get started
+                </p>
+            </div>
+
+            <!-- Form -->
+            <form id="onboarding-form" class="space-y-4">
+                <!-- Category 1 -->
+                <div>
+                    <label for="category1" class="block text-sm font-medium text-gray-300 mb-1">
+                        💻 Focus Area 1 <span class="text-red-400">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="category1"
+                        placeholder="e.g., Work, Career, Coding"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                        required
+                        maxlength="30"
+                    >
+                </div>
+
+                <!-- Category 2 -->
+                <div>
+                    <label for="category2" class="block text-sm font-medium text-gray-300 mb-1">
+                        🎓 Focus Area 2 <span class="text-gray-500">(optional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="category2"
+                        placeholder="e.g., Learning, Education"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                        maxlength="30"
+                    >
+                </div>
+
+                <!-- Category 3 -->
+                <div>
+                    <label for="category3" class="block text-sm font-medium text-gray-300 mb-1">
+                        🚀 Focus Area 3 <span class="text-gray-500">(optional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="category3"
+                        placeholder="e.g., Personal, Health, Side Project"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                        maxlength="30"
+                    >
+                </div>
+
+                <!-- Submit -->
+                <button
+                    type="submit"
+                    class="w-full mt-6 py-3 px-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+                >
+                    Get Started 🚀
+                </button>
+            </form>
+
+            <!-- Footer hint -->
+            <p class="text-center text-gray-500 text-sm mt-4">
+                You can always change these later in settings
+            </p>
+        </div>
+    </div>
   <div id="loading-overlay"
         style="
         position: fixed;
@@ -340,6 +399,4 @@
         <div class="loader-circle"></div>
     </div>
 </body>
-
 </html>
-

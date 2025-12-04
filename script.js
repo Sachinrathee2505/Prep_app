@@ -93,181 +93,389 @@ window.updateMobileUserInfo = () => {
 };
 
 
+// ════════════════════════════════════════════════════════════════
+// CONSTANTS & CONFIGURATION
+// ════════════════════════════════════════════════════════════════
+const DEFAULT_CATEGORIES = {
+    icons: ['💻', '🎓', '🚀', '📋'],
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#6B7280']
+};
 
-// =================================================================================
-// SECTION 2: CORE AUTH LOGIC (THE APP'S BRAIN)
-// =================================================================================
+const DEFAULT_APP_STATE = {
+    currentView: 'dashboard',
+    tasks: [],
+    skills: {},
+    timers: {},
+    isLoading: false,
+    userCategories: [],
+    userProfile: null
+};
 
+// ════════════════════════════════════════════════════════════════
+// DOM CACHE (Query once, use everywhere)
+// ════════════════════════════════════════════════════════════════
+const DOM = {
+    get authLoader() { return document.getElementById('auth-loader-overlay'); },
+    get onboardingModal() { return document.getElementById('onboarding-modal'); },
+    get onboardingForm() { return document.getElementById('onboarding-form'); },
+    get userInfo() { return document.getElementById('user-info'); },
+    get userPic() { return document.getElementById('user-pic'); },
+    get userName() { return document.getElementById('user-name'); },
+    get signInBtn() { return document.getElementById('sign-in-btn'); },
+    get addTaskBtn() { return document.getElementById('add-task-btn'); },
+    get mainContent() { return document.getElementById('main-content'); },
+    
+    getCategoryInputs() {
+        return [
+            document.getElementById('category1'),
+            document.getElementById('category2'),
+            document.getElementById('category3')
+        ];
+    }
+};
 
+// ════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════════════
 
-auth.onAuthStateChanged(async (user) => {         
-    if (user) {
-        // ========================================
-        // USER IS LOGGED IN
-        // ========================================
-        console.log('✅ User authenticated:', user.email);
-        try {
-            // Reference to user profile document
-            const userProfileRef = db.collection('users').doc(user.uid);
-            const userDoc = await userProfileRef.get();
-            if (!userDoc.exists || !userDoc.data().onboarded) {
-                // ========================================
-                // SCENARIO 1: NEW USER (No profile found)
-                // ========================================
-                console.log('🆕 New user detected - showing onboarding');
-                document.getElementById('auth-loader-overlay')?.classList.add('hidden');
-                const onboardingModal = document.getElementById('onboarding-modal');
-                onboardingModal.classList.remove('hidden');
-                // Setup onboarding form submission (only once)
-                const onboardingForm = document.getElementById('onboarding-form');                           
-                // Remove any existing listeners to prevent duplicates
-                const newForm = onboardingForm.cloneNode(true);
-                onboardingForm.parentNode.replaceChild(newForm, onboardingForm);
-                newForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();                                
-                    const submitButton = newForm.querySelector('button[type="submit"]');
-                    submitButton.textContent = 'Setting up...';
-                    submitButton.disabled = true;
-                    try {
-                        // Get category names from form
-                        const categoryNames = [
-                            document.getElementById('category1').value.trim(),
-                            document.getElementById('category2').value.trim(),
-                            document.getElementById('category3').value.trim()
-                        ];
-                        // Create category objects with icons and colors
-                        const focusAreas = categoryNames
-                            .filter(name => name !== '') // Remove empty entries
-                            .map((name, index) => ({
-                                id: `focus_${index + 1}`,
-                                name: name,
-                                icon: ['💻', '🎓', '🚀'][index] || '📋',
-                                color: ['#3B82F6', '#10B981', '#F59E0B'][index] || '#6B7280',
-                                order: index + 1
-                            }));
-                        // Validate at least one category
-                        if (focusAreas.length === 0) {
-                            showToast('Please enter at least one focus area', 'error');
-                            submitButton.textContent = 'Get Started 🚀';
-                            submitButton.disabled = false;
-                            return;
-                        }
-                        // Save user profile to Firestore
-                        await userProfileRef.set({
-                            uid: user.uid,
-                            email: user.email,
-                            displayName: user.displayName || user.email.split('@')[0],
-                            photoURL: user.photoURL || '',
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            onboarded: true,
-                            focusAreas: focusAreas,
-                            dailyGoal: 3,
-                            settings: {
-                                notifications: true,
-                                theme: 'dark'
-                            }
-                        });
-                        console.log('✅ User profile created:', focusAreas);
-                        ui.updateNavigationVisibility(true);
-                        // Hide modal
-                        onboardingModal.classList.add('hidden');
-                        // Show celebration
-                        if (typeof confetti === 'function') {
-                            confetti({
-                                particleCount: 150,
-                                spread: 80,
-                                origin: { y: 0.6 }
-                            });
-                        }
-                        showToast('🎉 Welcome to Level Up Hub!', 'success');
-                        // Initialize app with new profile
-                        const userProfile = {
-                            focusAreas,
-                            dailyGoal: 3,
-                            onboarded: true
-                        };
-                        initializeAppForUser(user, userProfile);
-                    } catch (error) {
-                        console.error('❌ Error saving onboarding data:', error);
-                        showToast('Failed to save preferences. Please try again.', 'error');
-                        submitButton.textContent = 'Get Started 🚀';
-                        submitButton.disabled = false;
-                    }
-                });
-            } else {
-                // ========================================
-                // SCENARIO 2: EXISTING USER (Profile exists)
-                // ========================================
-                console.log('✅ Existing user - loading profile');
-                const userData = userDoc.data();
-                const focusAreas = userData.focusAreas || [];
-                // Validate profile data
-                if (!focusAreas || focusAreas.length === 0) {
-                    console.warn('⚠️ User has no focus areas - showing onboarding');
-                    document.getElementById('onboarding-modal').classList.remove('hidden');
-                    return;
-                }
-                ui.updateNavigationVisibility(true);
-                if (window.updateMobileUserInfo) {
-                    window.updateMobileUserInfo();
-                }
-                // Show user info in header
-                const userInfo = document.getElementById('user-info');
-                const signInBtn = document.getElementById('sign-in-btn');
-                const addTaskBtn = document.getElementById('add-task-btn');
-                const navButtons = document.getElementById('nav-buttons');
-                // Update user display
-                const userPic = document.getElementById('user-pic');
-                const userName = document.getElementById('user-name');
-                if (userPic) userPic.src = user.photoURL || 'assets/default-avatar.png';
-                if (userName) userName.textContent = user.displayName || user.email.split('@')[0];
-                // Initialize app with user profile
-                const userProfile = {
-                    focusAreas: focusAreas,
-                    dailyGoal: userData.dailyGoal || 3,
-                    onboarded: true,
-                    settings: userData.settings || {}
-                };
-                initializeAppForUser(user, userProfile);
-            }
-        } catch (error) {
-            console.error('❌ Error loading user profile:', error);
-            showToast('Failed to load profile. Please refresh the page.', 'error');
-            document.getElementById('auth-loader-overlay')?.classList.add('hidden');
-        }
-    } else {
-        // ========================================
-        // USER IS LOGGED OUT
-        // ========================================
-        console.log('🔓 User logged out');              
-        ui.updateNavigationVisibility(false);
-        document.getElementById('auth-loader-overlay')?.classList.add('hidden');
-        // Reset app state
-        appState = { 
-            currentView: 'dashboard', 
-            tasks: [], 
-            skills: {}, 
-            timers: {}, 
-            isLoading: false,
-            userCategories: [],
-            userProfile: null
-        };
-        // Clear any running timers
-        Object.values(appState.timers).forEach(clearInterval);
-        // Show logged out message
-        if (mainContent) {
-            ui.mainContent.innerHTML = `
-                <div class="text-center p-8 bg-gray-800 rounded-lg">
-                    <div class="text-6xl mb-4">👋</div>
-                    <h2 class="text-2xl font-bold text-cyan-400 mb-2">Welcome to Level Up Hub</h2>
-                    <p class="text-gray-300">Please sign in with Google to continue.</p>
-                </div>
-            `;
+/**
+ * Shows/hides the loading overlay
+ */
+function setAuthLoading(isLoading) {
+    DOM.authLoader?.classList.toggle('hidden', !isLoading);
+}
+
+/**
+ * Creates focus area objects from user input
+ */
+function createFocusAreas(categoryNames) {
+    return categoryNames
+        .map(name => name.trim())
+        .filter(name => name !== '')
+        .map((name, index) => ({
+            id: `focus_${Date.now()}_${index}`,
+            name: name,
+            icon: DEFAULT_CATEGORIES.icons[index] || '📋',
+            color: DEFAULT_CATEGORIES.colors[index] || '#6B7280',
+            order: index + 1,
+            createdAt: new Date().toISOString()
+        }));
+}
+
+/**
+ * Updates UI to show user information
+ */
+function displayUserInfo(user) {
+    if (DOM.userPic) {
+        DOM.userPic.src = user.photoURL || 'assets/default-avatar.png';
+        DOM.userPic.alt = `${user.displayName}'s avatar`;
+    }
+    if (DOM.userName) {
+        DOM.userName.textContent = user.displayName || user.email?.split('@')[0] || 'User';
+    }
+}
+
+/**
+ * Shows the welcome screen for logged-out users
+ */
+function showLoggedOutScreen() {
+    if (DOM.mainContent) {
+        DOM.mainContent.innerHTML = `
+            <div class="text-center p-8 bg-gray-800 rounded-lg max-w-md mx-auto mt-20">
+                <div class="text-6xl mb-4">👋</div>
+                <h2 class="text-2xl font-bold text-cyan-400 mb-2">
+                    Welcome to Level Up Hub
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Transform your tasks into achievements. Level up your productivity!
+                </p>
+                <button 
+                    onclick="signInWithGoogle()" 
+                    class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                >
+                    🚀 Sign in with Google
+                </button>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Clears all active timers
+ */
+function clearAllTimers() {
+    if (appState?.timers) {
+        Object.values(appState.timers).forEach(timerId => {
+            clearInterval(timerId);
+            clearTimeout(timerId);
+        });
+    }
+}
+
+/**
+ * Triggers celebration confetti
+ */
+function celebrate() {
+    if (typeof confetti === 'function') {
+        confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 },
+            colors: ['#3B82F6', '#10B981', '#F59E0B', '#EC4899']
+        });
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ONBOARDING HANDLER 
+// ════════════════════════════════════════════════════════════════
+class OnboardingManager {
+    constructor() {
+        this.abortController = null;
+    }
+
+    reset() {
+        const inputs = DOM.getCategoryInputs();
+        inputs.forEach(input => {
+            if(input) input.value = '';
+        });
+        const submitBtn = DOM.onboardingForm?.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Get Started 🚀';
+            submitBtn.disabled = false;
         }
     }
-    document.body.classList.add('auth-ready');
+
+    show() {
+        setAuthLoading(false);
+        this.reset(); // ✅ Clear previous state
+        DOM.onboardingModal?.classList.remove('hidden');
+        this.attachFormHandler();
+    }
+
+    hide() {
+        DOM.onboardingModal?.classList.add('hidden');
+        this.cleanup();
+    }
+
+    cleanup() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+    }
+
+    attachFormHandler() {
+        // Cleanup previous listeners
+        this.cleanup();
+        this.abortController = new AbortController();
+
+        const form = DOM.onboardingForm;
+        if (!form) return;
+
+        form.addEventListener('submit', (e) => this.handleSubmit(e), {
+            signal: this.abortController.signal
+        });
+    }
+
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+
+        try {
+            // UI: Show loading state
+            submitBtn.textContent = 'Setting up...';
+            submitBtn.disabled = true;
+
+            // Get category values
+            const categoryInputs = DOM.getCategoryInputs();
+            const categoryNames = categoryInputs.map(input => input?.value || '');
+            const focusAreas = createFocusAreas(categoryNames);
+
+            // Validate
+            if (focusAreas.length === 0) {
+                throw new Error('Please enter at least one focus area');
+            }
+
+            // Get current user
+            const user = auth.currentUser;
+            if (!user) {
+                throw new Error('No authenticated user found');
+            }
+
+            // Create user profile
+            const userProfile = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || user.email.split('@')[0],
+                photoURL: user.photoURL || '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                onboarded: true,
+                focusAreas: focusAreas,
+                dailyGoal: 3,
+                settings: {
+                    notifications: true,
+                    theme: 'dark',
+                    soundEnabled: true
+                }
+            };
+
+            // Save to Firestore
+            await db.collection('users').doc(user.uid).set(userProfile);
+            console.log('✅ User profile created:', user.uid);
+
+            // Success!
+            this.hide();
+            celebrate();
+            showToast('🎉 Welcome to Level Up Hub!', 'success');
+
+            // Initialize app
+            ui.updateNavigationVisibility(true);
+            displayUserInfo(user);
+            initializeAppForUser(user, userProfile);
+
+        } catch (error) {
+            console.error('❌ Onboarding error:', error);
+            showToast(error.message || 'Failed to save preferences', 'error');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+const onboarding = new OnboardingManager();
+
+// ════════════════════════════════════════════════════════════════
+// USER PROFILE LOADER
+// ════════════════════════════════════════════════════════════════
+async function loadUserProfile(user) {
+    const userRef = db.collection('users').doc(user.uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        return { exists: false, needsOnboarding: true };
+    }
+
+    const data = userDoc.data();
+    
+    return {
+        exists: true,
+        needsOnboarding: !data.onboarded || !data.focusAreas?.length,
+        profile: {
+            ...data,
+            focusAreas: data.focusAreas || [],
+            dailyGoal: data.dailyGoal || 3,
+            settings: data.settings || {}
+        }
+    };
+}
+
+// ════════════════════════════════════════════════════════════════
+// MAIN AUTH STATE HANDLER
+// ════════════════════════════════════════════════════════════════
+let authStateProcessing = false;
+
+auth.onAuthStateChanged(async (user) => {
+    // Prevent race conditions from rapid auth changes
+    if (authStateProcessing) {
+        console.log('⏳ Auth state change already processing...');
+        return;
+    }
+
+    authStateProcessing = true;
+
+    try {
+        if (user) {
+            await handleUserSignedIn(user);
+        } else {
+            handleUserSignedOut();
+        }
+    } catch (error) {
+        console.error('❌ Auth state error:', error);
+        showToast('Authentication error. Please refresh.', 'error');
+        setAuthLoading(false);
+    } finally {
+        authStateProcessing = false;
+        document.body.classList.add('auth-ready');
+    }
 });
 
+// ────────────────────────────────────────────────────────────────
+// Handler: User Signed In
+// ────────────────────────────────────────────────────────────────
+async function handleUserSignedIn(user) {
+    console.log('✅ User authenticated:', user.email);
+    setAuthLoading(true);
+
+    try {
+        const { exists, needsOnboarding, profile } = await loadUserProfile(user);
+
+        if (needsOnboarding) {
+            // ══════════════════════════════════════════
+            // NEW USER → Show Onboarding
+            // ══════════════════════════════════════════
+            console.log('🆕 New user detected - showing onboarding');
+            onboarding.show();
+            return;
+        }
+
+        // ══════════════════════════════════════════════
+        // EXISTING USER → Load App
+        // ══════════════════════════════════════════════
+        console.log('✅ Existing user - loading profile');
+        
+        setAuthLoading(false);
+        ui.updateNavigationVisibility(true);
+        displayUserInfo(user);
+        
+        // Update mobile UI if available
+        window.updateMobileUserInfo?.();
+
+        // Initialize the main application
+        initializeAppForUser(user, profile);
+
+    } catch (error) {
+        console.error('❌ Error loading user profile:', error);
+        setAuthLoading(false);
+        
+        // Decide: show onboarding or error?
+        if (error.code === 'permission-denied') {
+            showToast('Access denied. Please sign in again.', 'error');
+            auth.signOut();
+        } else {
+            showToast('Failed to load profile. Please refresh.', 'error');
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Handler: User Signed Out
+// ────────────────────────────────────────────────────────────────
+function handleUserSignedOut() {
+    console.log('🔓 User logged out');
+
+    // Cleanup
+    clearAllTimers();
+    if (onboarding) onboarding.cleanup();
+
+    // ✅Mutate the existing object instead of replacing it
+    // This keeps the reference inside 'ui' alive and correct
+    appState.currentView = 'dashboard';
+    appState.tasks = [];
+    appState.skills = {};
+    appState.timers = {};
+    appState.isLoading = false;
+    appState.userCategories = [];
+    appState.userProfile = null;
+    appState.activeFilter = 'active';
+
+    // Update UI
+    setAuthLoading(false);
+    ui.updateNavigationVisibility(false);
+    showLoggedOutScreen();
+}
 
 // =================================================================================
 // SECTION 4: APP INITIALIZATION & DATA LISTENERS
