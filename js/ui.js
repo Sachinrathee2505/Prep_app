@@ -1940,10 +1940,14 @@ export class UI {
             });
         }, 100);
     }
-
     _generateInsights(weeklyData, totalTime, completedTasks, mostProductiveDay) {
         const insights = [];
         
+        // ✅ NEW: Use totalTime to show a summary
+        if (totalTime > 0) {
+            insights.push(`⏱️ Total focus time: <span class="font-mono">${formatTime(totalTime)}</span>`);
+        }
+
         const categories = Object.entries(weeklyData);
         const mostFocused = categories.reduce((max, [cat, time]) => 
             time > max.time ? { category: cat, time } : max, { time: 0 });
@@ -1959,9 +1963,9 @@ export class UI {
             insights.push(`📈 You completed ${completedTasks} tasks. Try to increase this next week`);
         }
         
-        // This logic for balance might be flawed if one time is 0, let's protect against division by zero
         const maxTime = Math.max(...categories.map(([_, time]) => time));
         const minTime = Math.min(...categories.map(([_, time]) => time));
+        // Protect against division by zero if maxTime is 0
         const balance = maxTime > 0 ? minTime / maxTime : 0;
 
         if (balance > 0.5) {
