@@ -12,9 +12,9 @@ import { UI } from './js/ui.js';
 new ConnectionManager;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-       navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('✅SW registered.'))
-        .catch(err => console.log('❌SW registration failed:', err));
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('✅SW registered.'))
+            .catch(err => console.log('❌SW registration failed:', err));
     });
 }
 
@@ -26,15 +26,16 @@ if ('serviceWorker' in navigator) {
 
 
 
-let appState = { 
-  currentView: 'dashboard', 
-  tasks: [], 
-  skills: {}, 
-  timers: {}, 
-  isLoading: true,
-  activeFilter: 'active'
+let appState = {
+    currentView: 'dashboard',
+    tasks: [],
+    skills: {},
+    timers: {},
+    isLoading: true,
+    activeFilter: 'active'
 };
 window.appState = appState;
+window.tasksUnsubscribe = null;
 let focusMode = null;
 let achievementSystem = null;
 let ui = null;
@@ -43,14 +44,14 @@ const modalContainer = document.getElementById('modal-container');
 const navDashboard = document.getElementById('nav-dashboard');
 const navSkills = document.getElementById('nav-skills');
 const signInBtn = document.getElementById('sign-in-btn');
-  if (signInBtn) {
-      signInBtn.onclick = () => {
-          document.getElementById('auth-loader-overlay')?.classList.remove('hidden');
-          auth.signInWithPopup(provider).catch(error => {
-              console.warn("Sign-in popup closed or failed:", error.message);
-              document.getElementById('auth-loader-overlay')?.classList.add('hidden');
-          });
-      };
+if (signInBtn) {
+    signInBtn.onclick = () => {
+        document.getElementById('auth-loader-overlay')?.classList.remove('hidden');
+        auth.signInWithPopup(provider).catch(error => {
+            console.warn("Sign-in popup closed or failed:", error.message);
+            document.getElementById('auth-loader-overlay')?.classList.add('hidden');
+        });
+    };
 }
 
 // Initialize the master UI controller
@@ -65,7 +66,7 @@ ui = new UI({
 // and weekly report modal need to work
 window.handleQuickAction = (action) => {
     const uid = auth.currentUser.uid;
-    switch(action) {
+    switch (action) {
         case 'addTask':
             ui.showTaskModal(db.collection('users').doc(uid).collection('tasks'));
             break;
@@ -124,7 +125,7 @@ const DOM = {
     get signInBtn() { return document.getElementById('sign-in-btn'); },
     get addTaskBtn() { return document.getElementById('add-task-btn'); },
     get mainContent() { return document.getElementById('main-content'); },
-    
+
     getCategoryInputs() {
         return [
             document.getElementById('category1'),
@@ -190,19 +191,29 @@ function showLoggedOutScreen() {
                     Transform your tasks into achievements. Level up your productivity!
                 </p>
                 <button 
-                    onclick="signInWithGoogle()" 
+                    id="welcome-sign-in-btn"
                     class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                 >
                     🚀 Sign in with Google
                 </button>
             </div>
         `;
+
+        document.getElementById('welcome-sign-in-btn').onclick = () => {
+            const loader = document.getElementById('auth-loader-overlay');
+            if (loader) loader.classList.remove('hidden');
+
+            auth.signInWithPopup(provider).catch(error => {
+                console.warn("Sign-in popup closed or failed:", error.message);
+                if (loader) loader.classList.add('hidden');
+            });
+        };
     }
 }
 
-/**
- * Clears all active timers
- */
+
+// Clears all active timers
+
 function clearAllTimers() {
     if (appState?.timers) {
         Object.values(appState.timers).forEach(timerId => {
@@ -212,9 +223,9 @@ function clearAllTimers() {
     }
 }
 
-/**
- * Triggers celebration confetti
- */
+
+// Triggers celebration confetti
+
 function celebrate() {
     if (typeof confetti === 'function') {
         confetti({
@@ -237,7 +248,7 @@ class OnboardingManager {
     reset() {
         const inputs = DOM.getCategoryInputs();
         inputs.forEach(input => {
-            if(input) input.value = '';
+            if (input) input.value = '';
         });
         const submitBtn = DOM.onboardingForm?.querySelector('button[type="submit"]');
         if (submitBtn) {
@@ -359,7 +370,7 @@ async function loadUserProfile(user) {
     }
 
     const data = userDoc.data();
-    
+
     return {
         exists: true,
         needsOnboarding: !data.onboarded || !data.focusAreas?.length,
@@ -425,11 +436,11 @@ async function handleUserSignedIn(user) {
         // EXISTING USER → Load App
         // ══════════════════════════════════════════════
         console.log('✅ Existing user - loading profile');
-        
+
         setAuthLoading(false);
         ui.updateNavigationVisibility(true);
         displayUserInfo(user);
-        
+
         // Update mobile UI if available
         window.updateMobileUserInfo?.();
 
@@ -439,7 +450,7 @@ async function handleUserSignedIn(user) {
     } catch (error) {
         console.error('❌ Error loading user profile:', error);
         setAuthLoading(false);
-        
+
         // Decide: show onboarding or error?
         if (error.code === 'permission-denied') {
             showToast('Access denied. Please sign in again.', 'error');
@@ -496,16 +507,20 @@ async function initializeAppForUser(user, userProfile) {
     focusMode = new FocusMode({ db, uid: user.uid, confetti, tasksCollection, appState: appState });
     // Set up the real-time UI listener for the streak display
     streakTracker.streakRef.onSnapshot(doc => {
-        const streakData = doc.data() || { current: 0 };
+        const streakData = doc.data();
+        const effectiveStreak = streakTracker.getEffectiveStreak(streakData);
+        
         const streakDisplay = document.getElementById('streak-display');
         const streakCount = document.getElementById('streak-count');
-        if (streakData.current > 0) {
-            streakCount.textContent = streakData.current;
+        
+        if (effectiveStreak > 0) {
+            streakCount.textContent = effectiveStreak;
             streakDisplay.classList.remove('hidden');
             streakDisplay.classList.add('flex');
         } else {
             streakDisplay.classList.add('hidden');
         }
+        
         if (window.updateMobileUserInfo) {
             window.updateMobileUserInfo();
         }
@@ -536,22 +551,53 @@ async function initializeAppForUser(user, userProfile) {
             appState.activeFilter = 'active';
             toggleTasksBtn.lastChild.nodeValue = ' Show Completed Tasks';
         }
-        ui.render(); // Re-render the dashboard
+
+        // Indicate loading state
+        appState.isLoading = true;
+        ui.render();
+
+        // Fetch new optimized data set
+        listenToTasks(tasksCollection, appState.activeFilter);
     };
     document.getElementById('add-task-btn').onclick = () => ui.showTaskModal(tasksCollection);
     document.getElementById('report-btn').onclick = () => ui.showWeeklyReportModal(db.collection('users').doc(user.uid).collection('timeLogs'), tasksCollection);
-    document.getElementById('home-link').onclick = (e) => { e.preventDefault(); ui.navigate('dashboard'); };        
-    mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, db.collection('users').doc(user.uid).collection('timeLogs'));        
+    document.getElementById('home-link').onclick = (e) => { e.preventDefault(); ui.navigate('dashboard'); };
+    mainContent.onclick = (e) => handleMainContentClick(e, tasksCollection, skillsCollection, db.collection('users').doc(user.uid).collection('timeLogs'));
     navDashboard.onclick = () => ui.navigate('dashboard');
     navSkills.onclick = () => ui.navigate('skills');
-    document.getElementById('nav-insights').onclick = () => ui.navigate('insights');       
+    document.getElementById('nav-insights').onclick = () => ui.navigate('insights');
     // Perform initial setup
     ui.navigate('dashboard');
     ui.add3DTiltEffect();
 
 }
 function attachDataListeners(tasksCollection, skillsCollection) {
-    tasksCollection.onSnapshot(snapshot => {
+    // Mount the initial active tasks listener
+    listenToTasks(tasksCollection, 'active');
+
+    skillsCollection.onSnapshot(snapshot => {
+        appState.skills = {};
+        snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
+        if (appState.currentView === 'skills') ui.render();
+    });
+}
+
+function listenToTasks(tasksCollection, filterMode) {
+    // 1. Unsubscribe from any previous listener to prevent memory leaks / duplicate data
+    if (window.tasksUnsubscribe) {
+        window.tasksUnsubscribe();
+    }
+
+    // 2. Build the query based on the active filter
+    let query = tasksCollection;
+    if (filterMode === 'active') {
+        query = query.where('completed', '==', false);
+    } else {
+        query = query.where('completed', '==', true).orderBy('completedAt', 'desc').limit(10);
+    }
+
+    // 3. Attach the new listener
+    window.tasksUnsubscribe = query.onSnapshot(snapshot => {
         // Map new data but PROTECT our optimistic updates
         appState.tasks = snapshot.docs.map(doc => {
             const serverData = doc.data();
@@ -568,17 +614,11 @@ function attachDataListeners(tasksCollection, skillsCollection) {
             appState.isLoading = false;
         }
         const loader = document.getElementById('auth-loader-overlay');
-            if (loader) {
-                loader.style.opacity = '0'; 
-                setTimeout(() => loader.classList.add('hidden'), 500);
-            }
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.classList.add('hidden'), 500);
+        }
         ui.render();
-    });
-
-    skillsCollection.onSnapshot(snapshot => {
-        appState.skills = {};
-        snapshot.docs.forEach(doc => { appState.skills[doc.id] = { id: doc.id, ...doc.data() }; });
-        if (appState.currentView === 'skills') ui.render();
     });
 }
 
@@ -613,12 +653,12 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                 };
                 // ✨ AUTO-STOP TIMER ON COMPLETION
                 if (task.timerRunning && task.lastStartTime) {
-                    console.log("⏹️ Task completed with timer running. Stopping timer now.");                       
+                    console.log("⏹️ Task completed with timer running. Stopping timer now.");
                     // Calculate the final duration
-                    const lastStart = task.lastStartTime.toDate ? 
-                        task.lastStartTime.toDate() : 
-                        new Date(task.lastStartTime);                       
-                    const duration = Math.round((new Date() - lastStart) / 1000);                       
+                    const lastStart = task.lastStartTime.toDate ?
+                        task.lastStartTime.toDate() :
+                        new Date(task.lastStartTime);
+                    const duration = Math.round((new Date() - lastStart) / 1000);
                     // Add timer stop updates
                     updates.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
                     updates.timerRunning = false;
@@ -647,12 +687,12 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                 const completedTasksSnap = await tasksCollection
                     .where('completed', '==', true)
                     .get();
-                await achievementSystem.checkAchievements('task_complete', { 
+                await achievementSystem.checkAchievements('task_complete', {
                     totalCompleted: completedTasksSnap.size,
-                    category: task.category 
+                    category: task.category
                 });
-                await achievementSystem.checkAchievements('streak_update', { 
-                    streak: stats.currentStreak 
+                await achievementSystem.checkAchievements('streak_update', {
+                    streak: stats.currentStreak
                 });
                 // Show skill rating modal
                 ui.showSkillRatingModal(task, skillsCollection);
@@ -702,8 +742,8 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                 });
             }
             // Save updated subtasks to Firestore
-            await tasksCollection.doc(taskId).update({ 
-                subtasks: task.subtasks 
+            await tasksCollection.doc(taskId).update({
+                subtasks: task.subtasks
             });
             // Refresh UI
             ui.render();
@@ -711,14 +751,14 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
             console.error('❌ Error updating subtask:', error);
             e.target.checked = !e.target.checked; // Revert
         }
-        return; 
+        return;
     }
 
     // ✅ EDIT BUTTON - Open modal with task data
     if (e.target.closest('.edit-btn')) {
         // We pass the full task object to the modal function
         ui.showTaskModal(tasksCollection, task);
-        return; 
+        return;
     }
 
     // ✅ DELETE BUTTON 
@@ -730,7 +770,7 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
         // Store the task object before removing it
         const removedTask = appState.tasks[taskIndex];
         // 1. Immediately remove from local state
-        appState.tasks.splice(taskIndex, 1);                
+        appState.tasks.splice(taskIndex, 1);
         // 2. Immediately re-render (card disappears instantly)
         ui.render();
         if (typeof updateStats === 'function') updateStats();
@@ -750,36 +790,36 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
             // UNDO LOGIC
             clearTimeout(deletionTimeout); // Cancel permanent deletion                    
             // Restore task to original position
-            appState.tasks.splice(taskIndex, 0, removedTask);                   
+            appState.tasks.splice(taskIndex, 0, removedTask);
             // Re-render to show the card again
             ui.render();
-            if (typeof updateStats === 'function') updateStats();                    
+            if (typeof updateStats === 'function') updateStats();
             console.log("✅ Task deletion undone");
-        });   
+        });
         return;
     }
     // ✅ TIMER BUTTON - Start/Stop
     else if (e.target.closest('.timer-btn')) {
-            try {
-                if (task.completed) {
-                    showToast("Cannot start a timer on a completed task.");
-                    return; 
-                }
+        try {
+            if (task.completed) {
+                showToast("Cannot start a timer on a completed task.");
+                return;
+            }
 
-                const isRunning = !task.timerRunning; // Toggle status
-                const updates = { timerRunning: isRunning };
-                
-                if (isRunning) {
-                    // --- START TIMER ---
-                    updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
-                    // Locally update Date so UI starts ticking immediately
-                    task.lastStartTime = new Date(); 
-                    console.log("⏱️ Timer started for task:", task.title);
-               } else if (task.lastStartTime) {
+            const isRunning = !task.timerRunning; // Toggle status
+            const updates = { timerRunning: isRunning };
+
+            if (isRunning) {
+                // --- START TIMER ---
+                updates.lastStartTime = firebase.firestore.FieldValue.serverTimestamp();
+                // Locally update Date so UI starts ticking immediately
+                task.lastStartTime = new Date();
+                console.log("⏱️ Timer started for task:", task.title);
+            } else if (task.lastStartTime) {
                 // --- STOP TIMER ---
-                const lastStart = task.lastStartTime.toDate ? 
-                    task.lastStartTime.toDate() : 
-                    new Date(task.lastStartTime);            
+                const lastStart = task.lastStartTime.toDate ?
+                    task.lastStartTime.toDate() :
+                    new Date(task.lastStartTime);
                 const duration = Math.round((new Date() - lastStart) / 1000);
 
                 // 1. Database: Atomic Increment
@@ -796,44 +836,44 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                 });
                 task.totalTimeLogged = (task.totalTimeLogged || 0) + duration;
                 task.lastStartTime = null;
-                
+
                 console.log(`⏹️ Timer stopped. Duration: ${duration}s. New Total: ${task.totalTimeLogged}`);
             }
 
-                // Update Firestore
-                await tasksCollection.doc(taskId).update(updates);
-                
-                // Update Local Object Safely (Remove sentinels before merging)
-                const localUpdates = { ...updates };
-                delete localUpdates.totalTimeLogged; 
-                delete localUpdates.lastStartTime;
-                
-                Object.assign(task, localUpdates);
-                ui.render();
+            // Update Firestore
+            await tasksCollection.doc(taskId).update(updates);
 
-            } catch (error) {
-                console.error('❌ Error updating timer:', error);
-                showToast('Failed to update timer', 'error');
-            }
-            return; 
-        }
+            // Update Local Object Safely (Remove sentinels before merging)
+            const localUpdates = { ...updates };
+            delete localUpdates.totalTimeLogged;
+            delete localUpdates.lastStartTime;
 
-        // ✅ FOCUS BUTTON
-        if (e.target.closest('.focus-btn')) {
-            if (focusMode && !task.completed) {
-                focusMode.open(task);
-            }
-            else if (task.completed) {
-                showToast("Cannot start a focus session on a completed task.");
-                return;
-            }
+            Object.assign(task, localUpdates);
+            ui.render();
+
+        } catch (error) {
+            console.error('❌ Error updating timer:', error);
+            showToast('Failed to update timer', 'error');
         }
+        return;
     }
 
-    document.addEventListener('task-time-updated', (e) => {
+    // ✅ FOCUS BUTTON
+    if (e.target.closest('.focus-btn')) {
+        if (focusMode && !task.completed) {
+            focusMode.open(task);
+        }
+        else if (task.completed) {
+            showToast("Cannot start a focus session on a completed task.");
+            return;
+        }
+    }
+}
+
+document.addEventListener('task-time-updated', (e) => {
     console.log('📨 Received task-time-updated event:', e.detail);
     const { taskId, addedSeconds, newTotal, markComplete } = e.detail;
-    
+
     const updateLocalState = () => {
         if (!appState.tasks) {
             console.log('❌ appState.tasks not available');
@@ -842,7 +882,7 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
 
         const task = appState.tasks.find(t => t.id === taskId);
         console.log('📍 Found task in appState:', task);
-        
+
         if (task) {
             const oldTotal = task.totalTimeLogged || 0;
             if (newTotal !== undefined) {
@@ -850,37 +890,37 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
             } else {
                 task.totalTimeLogged = oldTotal + addedSeconds;
             }
-            
+
             console.log(`✅ Updated: ${oldTotal}s → ${task.totalTimeLogged}s`);
-            
+
             if (markComplete) {
                 task.completed = true;
             }
-            
+
             ui.render();
             return true;
         }
         console.log('❌ Task not found in appState');
         return false;
     };
-        // Try immediately
-        if (!updateLocalState()) {
-            console.log("⚠️ Task not found in state yet. Retrying...");
-            // Retry after 500ms
-            setTimeout(() => {
-                if (!updateLocalState()) {
-                    // Final retry after 1.5 seconds
-                    setTimeout(updateLocalState, 1000);
-                }
-            }, 500);
-        }
-    });
+    // Try immediately
+    if (!updateLocalState()) {
+        console.log("⚠️ Task not found in state yet. Retrying...");
+        // Retry after 500ms
+        setTimeout(() => {
+            if (!updateLocalState()) {
+                // Final retry after 1.5 seconds
+                setTimeout(updateLocalState, 1000);
+            }
+        }, 500);
+    }
+});
 // ✅ KEYBOARD SHORTCUTS
 document.addEventListener('keydown', (e) => {
     const activeElement = document.activeElement;
-    const isTyping = activeElement.tagName === 'INPUT' || 
-                     activeElement.tagName === 'TEXTAREA' ||
-                     activeElement.isContentEditable;
+    const isTyping = activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable;
 
     // Allow Escape even when typing
     if (isTyping && e.key !== 'Escape') return;
