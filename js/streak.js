@@ -35,6 +35,13 @@ export class StreakTracker {
         return todayDay - lastDay; // signed integer
     }
 
+    getEffectiveStreak(data) {
+        if (!data || !data.lastStudy) return data?.current || 0;
+        const dayDiff = this.daysBetweenUtc(data.lastStudy, new Date());
+        // If they missed yesterday (dayDiff > 1), their streak is effectively 0 right now
+        return dayDiff > 1 ? 0 : (data.current || 0);
+    }
+
     async updateStreak() {
         try {
             // Use a local Date for display and checks; we'll store serverTimestamp() in Firestore
@@ -73,11 +80,8 @@ export class StreakTracker {
                     const newStreak = (data.current || 0) + 1;
                     updates.current = newStreak;
                     updates.bestStreak = Math.max(newStreak, data.bestStreak || 0);
-
-                    // increment totalDays
                     updates.totalDays = firebase.firestore.FieldValue.increment(1);
 
-                    // handle milestone
                     const milestoneTitle = this.checkMilestone(newStreak);
                     if (milestoneTitle) {
                         updates.milestones = firebase.firestore.FieldValue.arrayUnion({
@@ -87,7 +91,6 @@ export class StreakTracker {
                         });
                     }
 
-                    // Use tx.set with merge to atomically apply updates
                     tx.set(this.streakRef, updates, { merge: true });
 
                     return {
@@ -98,13 +101,17 @@ export class StreakTracker {
                     };
                 }
 
-                // If dayDiff === null or dayDiff < 0 or dayDiff > 1 => not consecutive; start new streak = 1
-                if (dayDiff === null) {
-                    // No lastStudy -> first log
+                // Not consecutive (streak broken or first time)
+                let statusType = 'reset';
+                let statusMessage = 'New streak started!';
+
+                if (dayDiff > 1) {
+                    statusType = 'broken';
+                    statusMessage = 'Streak broken! Back to day 1.';
                 } else if (dayDiff < 0) {
-                    // lastStudy is in future (clock skew). We choose to reset but record a warning
                     console.warn('StreakTracker: lastStudy is in the future compared to client time. Resetting streak.');
                 }
+
                 // reset to 1
                 updates.current = 1;
                 updates.bestStreak = Math.max(data.bestStreak || 0, 1);
@@ -113,16 +120,21 @@ export class StreakTracker {
                 tx.set(this.streakRef, updates, { merge: true });
 
                 return {
-                    status: 'reset',
+                    status: statusType,
                     streak: 1,
-                    message: 'New streak started!'
+                    message: statusMessage
                 };
             });
 
             // Celebrate outside transaction (transaction already committed)
             if (result.status === 'extended') {
-                // result.streak exists
                 await this.celebrateStreak(result.streak);
+            } else if (result.status === 'broken') {
+                // Let the user know they lost their streak but started anew
+                showToast(result.message, 'warning');
+            } else if (result.status === 'reset') {
+                // First-ever streak day
+                showToast('First streak day started! 🔥', 'success');
             }
 
             return result;
