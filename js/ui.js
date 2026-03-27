@@ -234,8 +234,8 @@ export class UI {
         this.cleanupTimers();
 
         const columnsHTML = this.appState.userCategories.map(cat => `
-            <div id="col-${cat.id}" class="bg-gray-800 rounded-lg p-4">
-                <h2 class="text-lg font-bold mb-4" style="color: ${cat.color};">${cat.icon || '🎯'} ${cat.name}</h2>
+            <div id="col-${this.escapeHtml(cat.id)}" class="bg-gray-800 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-4" style="color: ${this.escapeHtml(cat.color)};">${this.escapeHtml(cat.icon || '🎯')} ${this.escapeHtml(cat.name)}</h2>
                 <div class="space-y-4"></div>
             </div>
         `).join('');
@@ -253,10 +253,12 @@ export class UI {
 
         if (tasksToRender.length === 0) {
             let stateKey = this.appState.activeFilter;
+            // Only show 'default' if we're on the active tab and there are genuinely no tasks.
             if (this.appState.tasks.length === 0 && this.appState.activeFilter === 'active') {
                 stateKey = 'default';
             }
-            if (this.appState.tasks.length === 0) stateKey = 'default';
+            
+            // Render the specific empty state.
             this.mainContent.innerHTML = this.renderEmptyState(stateKey);
             if (stateKey === 'active') triggerConfettiAnimation();
             this.updateAlertBanner();
@@ -307,13 +309,22 @@ export class UI {
         const categoryObj = this.appState.userCategories?.find(c => c.id === task.category);
         const categoryName = categoryObj ? categoryObj.name : "Uncategorized";
         const categoryIcon = categoryObj ? categoryObj.icon : "📋";
-    
+        
         let projectHTML = '';
     
         if (task.type === 'project' && task.subtasks) {
             const completedSubtasks = task.subtasks.filter(st => st.completed).length;
             const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
-            projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${st.text}</span></li>`).join('')}</ul></div>`;
+            projectHTML = `<div class="mt-2"><div class="w-full bg-gray-600 rounded-full h-2.5"><div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: ${progress}%"></div></div><ul class="mt-2 text-sm space-y-1">${task.subtasks.map((st, index) => `<li class="flex items-center"><input type="checkbox" data-subtask-index="${index}" class="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${st.completed ? 'checked' : ''}><span class="${st.completed ? 'line-through text-gray-400' : ''}">${this.escapeHtml(st.text)}</span></li>`).join('')}</ul></div>`;
+        }
+
+        let urlHtml = '';
+        if (task.url) {
+            const isSafeUrl = task.url.startsWith('http://') || task.url.startsWith('https://');
+            const safeHref = isSafeUrl ? this.escapeHtml(task.url) : '#';
+            if (isSafeUrl) {
+               urlHtml = `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-sm text-cyan-400 hover:underline">Resource Link</a>`;
+            }
         }
     
         card.innerHTML = `
@@ -322,15 +333,15 @@ export class UI {
             <div class="card-content relative z-10 ${task.priority === 'High' ? 'border-red-500' : task.priority === 'Medium' ? 'border-yellow-500' : 'border-green-500'} border-l-4 pl-4 ${task.completed ? 'completed' : ''}">
     
                 <div class="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                    <span>${categoryIcon}</span> ${categoryName}
+                    <span>${this.escapeHtml(categoryIcon)}</span> ${this.escapeHtml(categoryName)}
                 </div>
     
                 <div class="flex justify-between items-start">
                     <div class="flex-grow">
-                        <h3 class="font-bold">${task.title}</h3>
+                        <h3 class="font-bold">${this.escapeHtml(task.title)}</h3>
                         <div class="text-sm mt-0.5">${this.getSmartDateDisplay(task.dueDate)}</div>
-                        ${task.url ? `<a href="${task.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">Resource Link</a>` : ''}
-                        <div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${skill}</span>`).join('')}</div>
+                        ${urlHtml}
+                        <div class="mt-2 flex flex-wrap gap-2">${(task.skills || []).map(skill => `<span class="text-xs bg-gray-600 px-2 py-1 rounded-full">${this.escapeHtml(skill)}</span>`).join('')}</div>
                     </div>
                     <div class="flex-shrink-0 relative z-20">
                         <input type="checkbox" class="task-checkbox h-5 w-5 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-600" ${task.completed ? 'checked' : ''}>
@@ -1365,7 +1376,7 @@ export class UI {
 
     showTaskModal(tasksCollection, taskToEdit = null) {
         const categories = this.appState.userCategories || [];
-        const categoryOptions = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        const categoryOptions = categories.map(cat => `<option value="${this.escapeHtml(cat.id)}">${this.escapeHtml(cat.name)}</option>`).join('');
 
         const isEditing = taskToEdit !== null;
         const modalTitle = isEditing ? "Edit Task" : "Add New Item";
@@ -1707,9 +1718,12 @@ export class UI {
     // ✅ HTML escape utility
     escapeHtml(text) {
         if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     showWeeklyReportModal = async (timeLogsCollection, tasksCollection) =>{
@@ -1928,7 +1942,6 @@ export class UI {
         if (reportLoadingState) reportLoadingState.classList.add('hidden');
         if (reportContentArea) reportContentArea.classList.remove('hidden');
 
-        // Re-add the export function globally
         window.exportWeeklyReport = () => {
             showToast('Report exported successfully!');
         }
@@ -1987,7 +2000,7 @@ export class UI {
             <input type="text" 
                 class="subtask-input flex-grow bg-gray-600 border border-gray-500 rounded-md p-1 text-sm" 
                 placeholder="Sub-task description" 
-                value="${text}"
+                value="${this.escapeHtml(text)}"
                 data-completed="${completed}">
             <button type="button" class="remove-subtask-btn text-gray-400 hover:text-red-500">&times;</button>
         `;
