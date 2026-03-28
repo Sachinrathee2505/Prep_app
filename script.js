@@ -509,10 +509,10 @@ async function initializeAppForUser(user, userProfile) {
     streakTracker.streakRef.onSnapshot(doc => {
         const streakData = doc.data();
         const effectiveStreak = streakTracker.getEffectiveStreak(streakData);
-        
+
         const streakDisplay = document.getElementById('streak-display');
         const streakCount = document.getElementById('streak-count');
-        
+
         if (effectiveStreak > 0) {
             streakCount.textContent = effectiveStreak;
             streakDisplay.classList.remove('hidden');
@@ -520,7 +520,7 @@ async function initializeAppForUser(user, userProfile) {
         } else {
             streakDisplay.classList.add('hidden');
         }
-        
+
         if (window.updateMobileUserInfo) {
             window.updateMobileUserInfo();
         }
@@ -593,7 +593,7 @@ function listenToTasks(tasksCollection, filterMode) {
     if (filterMode === 'active') {
         query = query.where('completed', '==', false);
     } else {
-        query = query.where('completed', '==', true).orderBy('completedAt', 'desc').limit(10);
+        query = query.where('completed', '==', true).limit(10);
     }
 
     // 3. Attach the new listener
@@ -619,6 +619,13 @@ function listenToTasks(tasksCollection, filterMode) {
             setTimeout(() => loader.classList.add('hidden'), 500);
         }
         ui.render();
+    }, (error) => {
+        console.error("Firebase Tasks Query Error:", error);
+        appState.isLoading = false;
+        ui.render();
+        if (typeof showToast === 'function') {
+            showToast("Error loading tasks: " + error.message, 'error');
+        }
     });
 }
 
@@ -632,6 +639,15 @@ function listenToTasks(tasksCollection, filterMode) {
 
 
 async function handleMainContentClick(e, tasksCollection, skillsCollection, timeLogsCollection) {
+    const quickActionBtn = e.target.closest('.quick-action-btn');
+    if (quickActionBtn) {
+        const action = quickActionBtn.dataset.quickAction;
+        if (action && typeof window.handleQuickAction === 'function') {
+            window.handleQuickAction(action);
+        }
+        return;
+    }
+
     const card = e.target.closest('.task-card');
     if (!card) return;
     const taskId = card.dataset.id;
