@@ -546,8 +546,7 @@ export class UI {
             overdue: []
         };
         const actionButtons = actions[filter] || actions.default;
-        // Note: onclick still calls a global function 'handleQuickAction'
-        return `<div class="flex gap-4 mt-4">${actionButtons.map(action => `<button onclick="handleQuickAction('${action.action}')" class="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><svg class="w-4 h-4 mr-2"><use xlink:href="#icon-${action.icon}"></use></svg>${action.label}</button>`).join('')}</div>`;
+        return `<div class="flex gap-4 mt-4">${actionButtons.map(action => `<button data-quick-action="${action.action}" class="quick-action-btn flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"><svg class="w-4 h-4 mr-2"><use xlink:href="#icon-${action.icon}"></use></svg>${action.label}</button>`).join('')}</div>`;
     }
     
     _getMotivationalElement(filter) {
@@ -1927,7 +1926,7 @@ export class UI {
             </div>
 
             <div class="flex justify-between">
-                <button onclick="exportWeeklyReport()" 
+                <button id="export-weekly-report-btn" 
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -1942,9 +1941,16 @@ export class UI {
         if (reportLoadingState) reportLoadingState.classList.add('hidden');
         if (reportContentArea) reportContentArea.classList.remove('hidden');
 
-        window.exportWeeklyReport = () => {
-            showToast('Report exported successfully!');
-        }
+        setTimeout(() => {
+            const exportBtn = document.getElementById('export-weekly-report-btn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                   import('./utils.js').then(module => {
+                       if (module.showToast) module.showToast('Report exported successfully!');
+                   });
+                });
+            }
+        }, 50);
 
         // Animate progress bars
         setTimeout(() => {
