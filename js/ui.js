@@ -955,14 +955,6 @@ export class UI {
         return hexPattern.test(color) ? color : SKILLS_CONFIG.COLORS.fallback;
     }
 
-    // ✅ Security: Escape HTML to prevent XSS
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     // --- Insights Page ---
 
     async renderInsightsDashboard(tasksCollection) {
@@ -1672,13 +1664,13 @@ export class UI {
                         )
                     );
                     
-                    this.showToast?.(`Updated ${validRatings.length} skill(s)!`, 'success');
+                    showToast(`Updated ${validRatings.length} skill(s)!`, 'success');
                 }
 
                 closeModal();
             } catch (error) {
                 console.error('Failed to save skill ratings:', error);
-                this.showToast?.('Failed to save ratings', 'error');
+                showToast('Failed to save ratings', 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Ratings';
             }

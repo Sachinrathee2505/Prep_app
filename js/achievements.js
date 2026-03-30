@@ -16,7 +16,7 @@ export class AchievementSystem {
         this.achievementSound = new Audio('assets/achievement.mp3');
         this.achievementSound.volume = 0.5;
 
-        this.initialize(); // auto async init
+        this._initPromise = this.initialize(); // auto async init
     }
 
     async initialize() {
@@ -146,6 +146,9 @@ export class AchievementSystem {
     }
 
     async checkAchievements(trigger, data) {
+        // Ensure initialization is complete before checking
+        await this._initPromise;
+        
         const newAchievements = [];
         for (const [id, achievement] of Object.entries(this.achievements)) {
             if (this.userAchievements.includes(id)) continue;

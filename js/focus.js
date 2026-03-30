@@ -231,14 +231,13 @@ export class FocusMode {
         // 1. Update UI Optimistically
         this.updateDashboardUI(timeLogged);
 
-        // 2. Save to DB
+        // 2. Save time to DB (but do NOT auto-complete the task)
         if (timeLogged > 0 && this.db && this.uid) {
             try {
                 const tasksRef = this.tasksCollection || this.db.collection('users').doc(this.uid).collection('tasks');
                 
-                // Atomic increment
+                // Only increment time — do NOT set completed: true
                 await tasksRef.doc(this.currentTask.id).update({ 
-                    completed: true,
                     totalTimeLogged: firebase.firestore.FieldValue.increment(timeLogged)
                 });
 
@@ -250,14 +249,14 @@ export class FocusMode {
                     timestamp: new Date()
                 });
                 
-                showToast(`🎉 Task "${this.currentTask.title}" completed!`);
+                showToast(`🎉 Focus session complete! Logged ${Math.round(timeLogged / 60)} minutes`);
                 this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
             } catch (error) {
                 console.error('Error saving to database:', error);
-                showToast('⚠️ Completed! (offline mode)', 'warning');
+                showToast('⚠️ Session complete! (offline mode)', 'warning');
             }
         } else {
-            showToast(`🎉 Task "${this.currentTask.title}" completed! (${Math.round(timeLogged/60)}min)`);
+            showToast(`🎉 Focus session complete! (${Math.round(timeLogged/60)}min)`);
             this.confetti?.({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
         }
         
