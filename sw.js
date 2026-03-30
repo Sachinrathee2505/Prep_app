@@ -20,15 +20,24 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
             console.log('SW: Caching App Shell...');
-            // We use fetch for CDN URLs to make sure they are valid
-            const cdnRequests = CDN_URLS.map(url => new Request(url, { mode: 'cors' }));
             
             // Cache local files
             await cache.addAll(APP_SHELL_URLS);
             
-            // Cache CDN files
+            // Cache CDN files with no-cors to prevent CORS issues
             try {
-                await cache.addAll(cdnRequests);
+                await Promise.all(
+                    CDN_URLS.map(async (url) => {
+                        const req = new Request(url, { mode: 'no-cors' });
+                        try {
+                            const res = await fetch(req);
+                            // opaque responses have status 0, cache.put allows them
+                            await cache.put(req, res);
+                        } catch (e) {
+                            console.warn(`SW: Failed to fetch CDN resource ${url}`, e);
+                        }
+                    })
+                );
             } catch (error) {
                 console.warn('SW: Failed to cache some CDN resources. They will be fetched on-demand.', error);
             }
