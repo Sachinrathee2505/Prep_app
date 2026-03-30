@@ -1,20 +1,15 @@
-const CACHE_NAME = 'placement-command-center-v5'; 
+const CACHE_NAME = 'placement-command-center-v6'; 
 
+// Only cache files that actually exist in the dist/ output
 const APP_SHELL_URLS = [
     './',
     './index.html',
-    './script.js',
-    './style.css',
     './manifest.json',
-    './icon-192.png',
-    './icon-512.png',
 ];
 
+// CDN scripts still loaded from external sources (not bundled by Vite)
 const CDN_URLS = [
     'https://cdn.tailwindcss.com',
-    'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js',
-    'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js',
-    'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js',
     'https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js',
     'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js',
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'

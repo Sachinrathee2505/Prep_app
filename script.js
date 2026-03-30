@@ -698,17 +698,60 @@ async function handleMainContentClick(e, tasksCollection, skillsCollection, time
                 const streakTracker = new StreakTracker(auth.currentUser.uid);
                 const streakResult = await streakTracker.updateStreak();
                 console.log('Streak update result:', streakResult);
-                // Check achievements
-                const stats = await streakTracker.getStreakStats();
+                // Check achievements — compute live stats from real data
+                const streakStats = await streakTracker.getStreakStats();
                 const completedTasksSnap = await tasksCollection
                     .where('completed', '==', true)
                     .get();
+
+                // Build tasksByCategory from actual completed tasks
+                const tasksByCategory = {};
+                completedTasksSnap.forEach(doc => {
+                    const cat = doc.data().category || 'general';
+                    tasksByCategory[cat] = (tasksByCategory[cat] || 0) + 1;
+                });
+
+                // Build hoursByCategory from actual time logs (timeLogs store duration in SECONDS)
+                const timeLogsSnap = await db.collection('users').doc(auth.currentUser.uid)
+                    .collection('timeLogs').get();
+                const hoursByCategory = {};
+                timeLogsSnap.forEach(doc => {
+                    const log = doc.data();
+                    const cat = log.category || 'general';
+                    const durationSeconds = Number(log.duration) || 0;
+                    hoursByCategory[cat] = (hoursByCategory[cat] || 0) + (durationSeconds / 3600); // Convert seconds to hours
+                });
+
+                // Check if today is a weekend for weekend achievement
+                const today = new Date();
+                const isWeekend = today.getDay() === 0 || today.getDay() === 6;
+                let weekendTasks = 0;
+                if (isWeekend) {
+                    completedTasksSnap.forEach(doc => {
+                        const d = doc.data().completedAt;
+                        if (!d) return;
+                        const completedDate = d.toDate ? d.toDate() : new Date(d);
+                        const day = completedDate.getDay();
+                        if (day === 0 || day === 6) weekendTasks++;
+                    });
+                }
+
+                const liveStats = {
+                    tasksCompleted: completedTasksSnap.size,
+                    streak: streakStats.currentStreak || 0,
+                    tasksByCategory,
+                    hoursByCategory,
+                    weekendTasks
+                };
+
+                console.log('📊 Achievement stats (live):', liveStats);
+
                 await achievementSystem.checkAchievements('task_complete', {
-                    totalCompleted: completedTasksSnap.size,
-                    category: task.category
+                    stats: liveStats,
+                    taskTime: new Date()
                 });
                 await achievementSystem.checkAchievements('streak_update', {
-                    streak: stats.currentStreak
+                    stats: liveStats
                 });
                 // Show skill rating modal
                 ui.showSkillRatingModal(task, skillsCollection);
